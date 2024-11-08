@@ -5,11 +5,11 @@ namespace API.Extensions
 {
     public static class DatabaseExtension
     {
-        public static IServiceCollection ConnectPostgreSQL(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection ConnectSqlServer(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<DataPostgreSqlContext>(options =>
+            services.AddDbContext<DataContext>(options =>
             {
-                options.UseNpgsql(configuration.GetConnectionString("DbConnection"));
+                options.UseSqlServer(configuration.GetConnectionString("DbConnection"));
             });
 
             return services;

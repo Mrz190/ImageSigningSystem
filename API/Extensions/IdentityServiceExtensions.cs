@@ -18,7 +18,7 @@ namespace API.Extensions
             })
             .AddRoles<AppRole>()
             .AddRoleManager<RoleManager<AppRole>>()
-            .AddEntityFrameworkStores<DataPostgreSqlContext>();
+            .AddEntityFrameworkStores<DataContext>();
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -49,6 +49,7 @@ namespace API.Extensions
 
             services.AddAuthorization(opt =>
             {
+                opt.AddPolicy("UserRole", policy => policy.RequireRole("User"));
                 opt.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"));
                 opt.AddPolicy("SupportPhotoRole", policy => policy.RequireRole("Support"));
             });

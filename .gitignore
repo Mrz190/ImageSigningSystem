@@ -361,3 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Images
+/Images_to_compare/
+
+# Migrations
+/API/Migrations/
+
+# Keys
+/API/Keys
