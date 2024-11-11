@@ -27,8 +27,6 @@ namespace API.Controllers
             _publicKey = System.IO.File.ReadAllText(publicKeyPath);
         }
 
-
-
         // Метод для загрузки изображения
         [HttpPost("upload")]
         public async Task<IActionResult> UploadImage(IFormFile file)
@@ -37,14 +35,17 @@ namespace API.Controllers
             {
                 using (var memoryStream = new MemoryStream())
                 {
-                    // Копируем файл в память
                     await file.CopyToAsync(memoryStream);
-                    var imageData = memoryStream.ToArray();
+                    var originalImageData = memoryStream.ToArray();
 
-                    var user = await _context.Users.FindAsync(User.Identity.Name);
+                    // Удаляем Exif перед подписанием
+                    byte[] strippedImageData = StripExif(originalImageData);
+
                     var signedImage = new SignedImage
                     {
-                        ImageData = imageData
+                        ImageData = originalImageData,
+                        StrippedData = strippedImageData, // Оригинальные данные без Exif для подписи и проверки
+                        Signature = null
                     };
 
                     _context.SignedImages.Add(signedImage);
@@ -55,46 +56,6 @@ namespace API.Controllers
             }
 
             return BadRequest("Изображение не предоставлено.");
-        }
-
-        // Метод для подписания изображения
-        [HttpPost("sign/{imageId}")]
-        public async Task<IActionResult> SignImage(int imageId)
-        {
-            var image = await _context.SignedImages.FindAsync(imageId);
-            if (image == null)
-            {
-                return NotFound("Изображение не найдено.");
-            }
-
-            var signedImage = SignImageData(image.ImageData);
-
-            byte[] signedImageData = AddSignatureToImageMetadata(image.ImageData, signedImage);
-
-            image.ImageData = signedImageData;
-            image.Signature = signedImage;
-            await _context.SaveChangesAsync();
-
-            return Ok("Изображение подписано и метаданные обновлены.");
-        }
-
-        // Метод для добавления подписи в метаданные изображения (Exif)
-        private byte[] AddSignatureToImageMetadata(byte[] imageData, string signature)
-        {
-            using (var image = Image.Load(imageData))
-            {
-                var exifProfile = image.Metadata.ExifProfile ?? new ExifProfile();
-                image.Metadata.ExifProfile = exifProfile;
-
-                var encodedSignature = new EncodedString(signature);
-                exifProfile.SetValue(ExifTag.UserComment, encodedSignature);
-
-                using (var memoryStream = new MemoryStream())
-                {
-                    image.SaveAsJpeg(memoryStream);
-                    return memoryStream.ToArray();
-                }
-            }
         }
 
         // Метод для подписи изображения с использованием приватного ключа
@@ -125,59 +86,135 @@ namespace API.Controllers
                 return NotFound("Изображение не найдено.");
             }
 
-            return File(image.ImageData, "image/jpeg");
+            return File(image.ImageData, "image/png");
         }
 
-        // Метод для проверки подписи изображения
-        [HttpPost("verify-signature/{imageId}")]
-        public async Task<IActionResult> VerifyImageSignature(int imageId)
+        // Метод для скачивания оригинала изображения
+        [HttpGet("download-without-exif/{id}")]
+        public async Task<IActionResult> DownloadImageWithoutExif(int id)
+        {
+            var image = await _context.SignedImages.FindAsync(id);
+            
+            if (image == null) return NotFound("Изображение не найдено.");
+
+            return File(image.StrippedData, "image/png");
+        }
+
+        // Метод для создания подписи и добавления её в Exif
+        [HttpPost("sign/{imageId}")]
+        public async Task<IActionResult> SignImage(int imageId)
         {
             var image = await _context.SignedImages.FindAsync(imageId);
-
             if (image == null)
             {
                 return NotFound("Изображение не найдено.");
             }
 
-            bool isValid = VerifyImageSignature(image.ImageData, image.Signature);
+            // Подпись на данных без Exif
+            var signature = SignImageData(image.StrippedData);
 
-            if (isValid)
+            // Подпись в Exif оригинальных данных
+            byte[] signedImageData = AddSignatureToImageMetadata(image.ImageData, signature);
+
+            image.ImageData = signedImageData;
+            image.Signature = signature;
+
+            await _context.SaveChangesAsync();
+
+            return Ok("Изображение подписано и метаданные обновлены.");
+        }
+
+        // Метод для удаления Exif перед хешированием
+        private byte[] StripExif(byte[] imageData)
+        {
+            using (var image = Image.Load(imageData))
             {
-                return Ok("Подпись верна.");
-            }
-            else
-            {
-                return BadRequest("Подпись неверна.");
+                image.Metadata.ExifProfile = null;  // Убираем Exif
+                using (var ms = new MemoryStream())
+                {
+                    image.SaveAsPng(ms); 
+                    return ms.ToArray();
+                }
             }
         }
-            private bool VerifyImageSignature(byte[] imageData, string signature)
+
+        // Метод для проверки подписи
+        [HttpPost("verify-signature/{imageId}")]
+        public async Task<IActionResult> VerifyImageSignature(int imageId)
+        {
+            var image = await _context.SignedImages.FindAsync(imageId);
+            if (image == null)
             {
-                try
-                {
-                    using (var rsa = RSA.Create())
-                    {
-                        rsa.ImportFromPem(_publicKey.ToCharArray());
-
-                        byte[] imageHash = SHA256.Create().ComputeHash(imageData);
-                        Console.WriteLine($"Computed Image Hash: {BitConverter.ToString(imageHash)}");
-
-                        byte[] signatureBytes = Convert.FromBase64String(signature);
-                        Console.WriteLine($"Signature to verify: {BitConverter.ToString(signatureBytes)}");
-
-                        bool isValid = rsa.VerifyData(imageHash, signatureBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-                        Console.WriteLine($"Signature valid: {isValid}");
-
-                        return isValid;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error: {ex.Message}");
-                    return false;
-                }
+                return NotFound("Изображение не найдено.");
             }
 
+            // Извлекаем подпись из метаданных
+            var signature = ExtractSignatureFromImageMetadata(image.ImageData);
+            if (string.IsNullOrEmpty(signature))
+            {
+                return BadRequest("Подпись не найдена в метаданных.");
+            }
 
+            // Проверяем подпись на оригинальных данных без Exif
+            bool isValid = VerifySignature(image.StrippedData, signature);
+            return isValid ? Ok("Подпись верна.") : BadRequest("Подпись неверна.");
+        }
+
+        // Метод для проверки подписи
+        private bool VerifySignature(byte[] imageData, string signature)
+        {
+            try
+            {
+                using (var rsa = RSA.Create())
+                {
+                    rsa.ImportFromPem(_publicKey.ToCharArray());
+
+                    byte[] imageHash = SHA256.Create().ComputeHash(imageData);
+                    byte[] signatureBytes = Convert.FromBase64String(signature);
+
+                    return rsa.VerifyData(imageHash, signatureBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Метод для добавления подписи в Exif метаданные
+        private byte[] AddSignatureToImageMetadata(byte[] imageData, string signature)
+        {
+            using (var image = Image.Load(imageData))
+            {
+                var exifProfile = image.Metadata.ExifProfile ?? new ExifProfile();
+                image.Metadata.ExifProfile = exifProfile;
+
+                // Добавляем подпись в тег UserComment
+                exifProfile.SetValue(ExifTag.UserComment, signature);
+
+                using (var ms = new MemoryStream())
+                {
+                    image.SaveAsPng(ms);  // Или используйте нужный формат
+                    return ms.ToArray();
+                }
+            }
+        }
+
+        // Метод для извлечения подписи из Exif метаданных
+        private string ExtractSignatureFromImageMetadata(byte[] imageData)
+        {
+            using (var image = Image.Load(imageData))
+            {
+                var exifProfile = image.Metadata.ExifProfile;
+                if (exifProfile != null)
+                {
+                    var userComment = exifProfile.GetValue(ExifTag.UserComment);
+                    return userComment?.Value.ToString();
+                }
+            }
+            return null;
+        }
 
         // Метод для извлечения подписи из метаданных изображения
         [HttpGet("get-signature/{imageId}")]
@@ -197,26 +234,6 @@ namespace API.Controllers
             }
 
             return Ok(signature);
-        }
-
-        // Метод для извлечения подписи из метаданных изображения
-        private string ExtractSignatureFromImageMetadata(byte[] imageData)
-        {
-            using (var image = Image.Load(imageData))
-            {
-                var exifProfile = image.Metadata.ExifProfile;
-
-                if (exifProfile != null)
-                {
-                    var userComment = exifProfile.GetValue(ExifTag.UserComment);
-                    if (userComment != null)
-                    {
-                        return userComment.Value.ToString();
-                    }
-                }
-            }
-
-            return null;
         }
     }
 }

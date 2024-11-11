@@ -9,6 +9,7 @@ namespace API.Entity
 
         [Required]
         public byte[] ImageData { get; set; }
+        public byte[] StrippedData { get; set; }
         public string? Signature { get; set; }
 
         //public int UserId { get; set; }

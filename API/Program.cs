@@ -63,4 +63,33 @@ app.UseIdentityServer();
 app.UseAuthorization();
 app.MapControllers();
 
+using(var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    try
+    {
+        var context = services.GetRequiredService<DataContext>();
+        var userManager = services.GetRequiredService<UserManager<AppUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<AppRole>>();
+
+        if (!await roleManager.RoleExistsAsync("Admin")) await roleManager.CreateAsync(new AppRole { Name = "Admin" });
+        if (!await roleManager.RoleExistsAsync("Support")) await roleManager.CreateAsync(new AppRole { Name = "Support" });
+        if (!await roleManager.RoleExistsAsync("User")) await roleManager.CreateAsync(new AppRole { Name = "User" });
+
+        Console.BackgroundColor = ConsoleColor.DarkGreen;
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(" Application started. ");
+        Console.ResetColor();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetService<ILogger<Program>>();
+        Console.BackgroundColor = ConsoleColor.Red;
+        Console.ForegroundColor = ConsoleColor.White;
+        logger.LogError(ex, "An error occurred while seeding role in the database.");
+        Console.ResetColor();
+    }
+}
+
 app.Run();
