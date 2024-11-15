@@ -1,5 +1,6 @@
 using API.Data;
 using API.Entity;
+using API.Middleware;
 using IdentityServer4.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -7,39 +8,41 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure logging with Serilog
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .WriteTo.Console()
     .CreateLogger();
 builder.Host.UseSerilog();
 
-
-// Настройка базы данных SQL Server
+// Configure SQL Server database connection
 builder.Services.AddDbContext<DataContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
-// Настройка Identity
+// Configure Identity
 builder.Services.AddIdentity<AppUser, AppRole>()
     .AddEntityFrameworkStores<DataContext>()
     .AddDefaultTokenProviders();
 
-// Настройка IdentityServer без аутентификации
+// Configure IdentityServer (without authentication)
 builder.Services.AddIdentityServer()
-    .AddDeveloperSigningCredential()
-    .AddInMemoryApiResources(new List<ApiResource>()) // Пустой список ресурсов
-    .AddInMemoryClients(new List<Client>()) // Пустой список клиентов
-    .AddInMemoryApiScopes(new List<ApiScope>()) // Пустой список скоупов
-    .AddAspNetIdentity<AppUser>();
+    .AddDeveloperSigningCredential() // Use developer signing credential for signing tokens
+    .AddInMemoryApiResources(new List<ApiResource>()) // Empty list of API resources
+    .AddInMemoryClients(new List<Client>()) // Empty list of clients
+    .AddInMemoryApiScopes(new List<ApiScope>()) // Empty list of API scopes
+    .AddAspNetIdentity<AppUser>(); // Link IdentityServer with ASP.NET Identity
 
 builder.Services.AddControllers();
+builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+// Configure logging
 builder.Services.AddLogging();
 
+// Add HttpContextAccessor to access the HTTP context in middleware
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
@@ -57,13 +60,16 @@ app.UseRouting();
 
 app.UseHttpsRedirection();
 
-// IdentityServer
 app.UseIdentityServer();
 
+// Enable Digest Authentication middleware
+app.UseDigestAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
-using(var scope = app.Services.CreateScope())
+// Seed database with roles during application startup
+using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
 
@@ -73,6 +79,7 @@ using(var scope = app.Services.CreateScope())
         var userManager = services.GetRequiredService<UserManager<AppUser>>();
         var roleManager = services.GetRequiredService<RoleManager<AppRole>>();
 
+        // Create roles if they don't exist
         if (!await roleManager.RoleExistsAsync("Admin")) await roleManager.CreateAsync(new AppRole { Name = "Admin" });
         if (!await roleManager.RoleExistsAsync("Support")) await roleManager.CreateAsync(new AppRole { Name = "Support" });
         if (!await roleManager.RoleExistsAsync("User")) await roleManager.CreateAsync(new AppRole { Name = "User" });
@@ -84,6 +91,7 @@ using(var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
+        // Log errors during role creation
         var logger = services.GetService<ILogger<Program>>();
         Console.BackgroundColor = ConsoleColor.Red;
         Console.ForegroundColor = ConsoleColor.White;
