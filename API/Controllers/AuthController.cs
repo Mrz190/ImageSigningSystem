@@ -79,10 +79,14 @@ namespace API.Controllers
         public async Task<ActionResult<UserDto>> Login(LogDto logDto)
         {
             var user = await _userManager.Users.SingleOrDefaultAsync(n => n.UserName == logDto.UserName);
-            if (user == null) return BadRequest("Invalid username/password.");
+            if (user == null)
+                return BadRequest("Invalid username or password.");
 
-            var password_check = await _userManager.CheckPasswordAsync(user, logDto.Password);
-            if (!password_check) return BadRequest("Invalid username/password.");
+            var realm = _config.GetValue<string>("DigestRealm");
+            var calculatedHash = _MD5.CalculateMd5Hash($"{logDto.UserName.ToLower()}:{realm}:{logDto.Password}");
+
+            if (user.PasswordHash != calculatedHash)
+                return BadRequest("Invalid username or password.");
 
             var resultDto = new UserDto
             {
