@@ -1,6 +1,10 @@
 using API.Data;
 using API.Entity;
+using API.Extensions;
+using API.Helpers;
+using API.Intefaces;
 using API.Middleware;
+using API.Repositories;
 using IdentityServer4.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +23,9 @@ builder.Host.UseSerilog();
 builder.Services.AddDbContext<DataContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<MD5Hash>();
+
 // Configure Identity
 builder.Services.AddIdentity<AppUser, AppRole>()
     .AddEntityFrameworkStores<DataContext>()
@@ -26,23 +33,29 @@ builder.Services.AddIdentity<AppUser, AppRole>()
 
 // Configure IdentityServer (without authentication)
 builder.Services.AddIdentityServer()
-    .AddDeveloperSigningCredential() // Use developer signing credential for signing tokens
+    .AddDeveloperSigningCredential() // Developer signing credential for signing tokens
     .AddInMemoryApiResources(new List<ApiResource>()) // Empty list of API resources
     .AddInMemoryClients(new List<Client>()) // Empty list of clients
     .AddInMemoryApiScopes(new List<ApiScope>()) // Empty list of API scopes
     .AddAspNetIdentity<AppUser>(); // Link IdentityServer with ASP.NET Identity
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "Digest";
+})
+.AddScheme<DigestAuthenticationOptions, DigestAuthenticationHandler>("Digest", options =>
+{
+    options.Realm = builder.Configuration.GetValue<string>("DigestRealm");
+});
 
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Configure AutoMapper and other services
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// Configure logging
-builder.Services.AddLogging();
-
-// Add HttpContextAccessor to access the HTTP context in middleware
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
@@ -52,7 +65,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "v2");
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
     });
 }
 
@@ -60,12 +73,19 @@ app.UseRouting();
 
 app.UseHttpsRedirection();
 
+// Enable IdentityServer middleware
 app.UseIdentityServer();
 
-// Enable Digest Authentication middleware
+// Enable ASP.NET Core Identity Authentication middleware
+app.UseAuthentication();
+
+// Enable custom Digest Authentication middleware
 app.UseDigestAuthentication();
+
+// Enable Authorization middleware
 app.UseAuthorization();
 
+// Map attribute-routed API controllers
 app.MapControllers();
 
 // Seed database with roles during application startup
@@ -95,7 +115,7 @@ using (var scope = app.Services.CreateScope())
         var logger = services.GetService<ILogger<Program>>();
         Console.BackgroundColor = ConsoleColor.Red;
         Console.ForegroundColor = ConsoleColor.White;
-        logger.LogError(ex, "An error occurred while seeding role in the database.");
+        logger.LogError(ex, "An error occurred while seeding roles in the database.");
         Console.ResetColor();
     }
 }

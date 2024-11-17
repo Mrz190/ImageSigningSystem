@@ -35,13 +35,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Dto\" />
-    <Folder Include="Intefaces\" />
-    <Folder Include="Repositories\" />
-    <Folder Include="Services\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="Keys\private.key">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

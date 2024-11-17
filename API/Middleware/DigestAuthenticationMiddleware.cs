@@ -1,141 +1,174 @@
-﻿using System.Security.Cryptography;
+﻿using API.Helpers;
+using API.Intefaces;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
+using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 
 namespace API.Middleware
 {
+    // Middleware class to handle Digest Authentication
     public class DigestAuthenticationMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly string _realm = "MyAppRealm";
-
-        public DigestAuthenticationMiddleware(RequestDelegate next)
+        private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly IConfiguration _config;
+        public DigestAuthenticationMiddleware(RequestDelegate next, IServiceScopeFactory serviceScopeFactory, IConfiguration config)
         {
             _next = next;
+            _serviceScopeFactory = serviceScopeFactory;
+            _config = config;
         }
 
-        public async Task InvokeAsync(HttpContext context)
+        public async Task Invoke(HttpContext context)
         {
-            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+            var endpoint = context.GetEndpoint();
 
-            if (authHeader == null || !authHeader.StartsWith("Digest", StringComparison.OrdinalIgnoreCase))
+            // Check [AllowAnonymous]
+            if (endpoint?.Metadata?.GetMetadata<AllowAnonymousAttribute>() != null)
             {
-                // No header or not Digest
-                context.Response.StatusCode = 401;
-                context.Response.Headers.Add("WWW-Authenticate", "Digest realm=\"example.com\", qop=\"auth\", algorithm=\"MD5\", nonce=\"randomNonce\", opaque=\"randomOpaque\"");
+                await _next(context);
                 return;
             }
 
-            var digestParams = ParseDigestHeader(authHeader);
+            // Read the Authorization header from the request
+            var authorizationHeader = context.Request.Headers["Authorization"].ToString();
 
-            if (digestParams == null || !ValidateDigest(context, digestParams))
+            // If no Authorization header is present or it's not a Digest auth, challenge the request
+            if (string.IsNullOrEmpty(authorizationHeader) || !authorizationHeader.StartsWith("Digest "))
             {
-                // Challenge client with Digest
-                var nonce = GenerateNonce();
-                context.Response.Headers["WWW-Authenticate"] = $"Digest realm=\"{_realm}\", nonce=\"{nonce}\", algorithm=MD5";
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await ChallengeAsync(context); // Send a 401 Unauthorized response
+                return;
+            }
+
+            // Parse the Digest Authentication header
+            var digestValues = ParseDigestHeader(authorizationHeader);
+            if (digestValues == null)
+            {
+                await ChallengeAsync(context); // Send a 401 Unauthorized response
+                return;
+            }
+
+            // Generate a server nonce
+            var serverNonce = GenerateNonce();
+
+            // Validate the Digest header by comparing hashes
+            if (!ValidateDigest(digestValues, serverNonce, context))
+            {
+                await ChallengeAsync(context); // Send a 401 Unauthorized response
                 return;
             }
 
             await _next(context);
         }
 
-        private static string GenerateNonce()
+        private async Task ChallengeAsync(HttpContext context)
         {
-            var timeStamp = DateTime.UtcNow.ToString("o");
-            var nonceData = $"{Guid.NewGuid()}:{timeStamp}";
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes(nonceData));
+            var nonce = GenerateNonce();
+            context.Response.Headers["WWW-Authenticate"] = $"Digest realm=\"{_config["DigestRealm"]}\", qop=\"auth\", nonce=\"{nonce}\", opaque=\"\"";
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsync("Authentication required");
         }
 
-        private bool ValidateDigest(HttpContext context, DigestParams digestParams)
+        private string GenerateNonce()
         {
-            // TODO: get from database
-            var passwordHash = "5f4dcc3b5aa765d61d8327deb882cf99"; // "password" hash
-
-            var ha1 = MD5Hash($"{digestParams.Username}:{digestParams.Realm}:{passwordHash}");
-            var ha2 = MD5Hash($"GET:{digestParams.Uri}");
-            var expectedResponse = MD5Hash($"{ha1}:{digestParams.Nonce}:{digestParams.Nc}:{digestParams.Cnonce}:{digestParams.Qop}:{ha2}");
-
-            return expectedResponse.Equals(digestParams.Response, StringComparison.OrdinalIgnoreCase);
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(DateTime.Now.Ticks.ToString()));
         }
 
-        private DigestParams ParseDigestHeader(string authHeader)
+        private bool ValidateDigest(Dictionary<string, string> digestValues, string serverNonce, HttpContext context)
         {
-            var parameters = authHeader.Substring(7).Trim(); // Remove "Digest: "
-            var digestParams = new DigestParams();
+            var username = digestValues["username"];
 
-            foreach (var param in parameters.Split(','))
+            using (var scope = _serviceScopeFactory.CreateScope())
             {
-                var keyValue = param.Split('=');
-                if (keyValue.Length == 2)
-                {
-                    var key = keyValue[0].Trim();
-                    var value = keyValue[1].Trim(' ', '"');
+                var _userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+                var passwordHashFromDb = _userRepository.GetUserPasswordFromDatabaseByName(username).Result;
+                var _MD5 = scope.ServiceProvider.GetRequiredService<MD5Hash>();
 
-                    switch (key.ToLower())
-                    {
-                        case "username":
-                            digestParams.Username = value;
-                            break;
-                        case "realm":
-                            digestParams.Realm = value;
-                            break;
-                        case "nonce":
-                            digestParams.Nonce = value;
-                            break;
-                        case "uri":
-                            digestParams.Uri = value;
-                            break;
-                        case "response":
-                            digestParams.Response = value;
-                            break;
-                        case "qop":
-                            digestParams.Qop = value;
-                            break;
-                        case "nc":
-                            digestParams.Nc = value;
-                            break;
-                        case "cnonce":
-                            digestParams.Cnonce = value;
-                            break;
-                        case "opaque":
-                            digestParams.Opaque = value;
-                            break;
-                    }
+                var realm = _config.GetValue<string>("DigestRealm");
+                var ha1 = passwordHashFromDb;
+
+                var method = context.Request.Method;
+                var a2 = $"{method}:{digestValues["uri"]}";
+                var ha2 = _MD5.CalculateMd5Hash(a2);
+
+                var expectedResponse = _MD5.CalculateMd5Hash($"{ha1}:{digestValues["nonce"]}:{digestValues["nc"]}:{digestValues["cnonce"]}:{digestValues["qop"]}:{ha2}");
+                return expectedResponse == digestValues["response"];
+            }
+        }
+
+        private Dictionary<string, string> ParseDigestHeader(string authorizationHeader)
+        {
+            var values = new Dictionary<string, string>();
+            var digestData = authorizationHeader.Substring("Digest ".Length);
+            var parts = digestData.Split(',');
+
+            foreach (var part in parts)
+            {
+                var kvp = part.Split(new[] { '=' }, 2);
+                if (kvp.Length == 2)
+                {
+                    var key = kvp[0].Trim();
+                    var value = kvp[1].Trim(' ', '"');
+                    values[key] = value;
                 }
             }
+            return values;
+        }
+    }
 
-            return digestParams;
+    // Class to hold the configuration options for Digest Authentication
+    public class DigestAuthenticationOptions : AuthenticationSchemeOptions
+    {
+        public string Realm { get; set; } = "MyRealm";
+    }
+
+    // Handler class to process Digest Authentication requests
+    public class DigestAuthenticationHandler : AuthenticationHandler<DigestAuthenticationOptions>
+    {
+        public DigestAuthenticationHandler(
+            IOptionsMonitor<DigestAuthenticationOptions> options,
+            ILoggerFactory logger,
+            System.Text.Encodings.Web.UrlEncoder encoder,
+            ISystemClock clock) : base(options, logger, encoder, clock)
+        {
         }
 
-        private string MD5Hash(string input)
+        // Method to handle the authentication logic
+        protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            using (var md5 = MD5.Create())
+            if (!Request.Headers.ContainsKey("Authorization"))
             {
-                var bytes = Encoding.UTF8.GetBytes(input);
-                var hashBytes = md5.ComputeHash(bytes);
-                return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                return AuthenticateResult.NoResult();
             }
+
+            var authHeader = AuthenticationHeaderValue.Parse(Request.Headers["Authorization"]);
+
+            if (authHeader.Scheme != "Digest")
+            {
+                return AuthenticateResult.Fail("Invalid authentication scheme");
+            }
+
+            var claims = new[] {
+                new Claim(ClaimTypes.NameIdentifier, "user"),
+                new Claim(ClaimTypes.Name, "user")
+            };
+
+            // Create ClaimsIdentity from the claims
+            var identity = new ClaimsIdentity(claims, Scheme.Name);
+            var principal = new ClaimsPrincipal(identity);
+            var ticket = new AuthenticationTicket(principal, Scheme.Name);
+
+            return AuthenticateResult.Success(ticket);
         }
-    }
 
-    public class DigestParams
-    {
-        public string Username { get; set; }
-        public string Realm { get; set; }
-        public string Nonce { get; set; }
-        public string Uri { get; set; }
-        public string Response { get; set; }
-        public string Qop { get; set; }
-        public string Nc { get; set; }
-        public string Cnonce { get; set; }
-        public string Opaque { get; set; }
-    }
-
-    public static class DigestAuthenticationMiddlewareExtensions
-    {
-        public static IApplicationBuilder UseDigestAuthentication(this IApplicationBuilder builder)
+        // Method to send a challenge response (401 Unauthorized)
+        protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
         {
-            return builder.UseMiddleware<DigestAuthenticationMiddleware>();
+            Response.Headers["WWW-Authenticate"] = $"Digest realm=\"{Options.Realm}\", qop=\"auth\"";
+            Response.StatusCode = 401;
         }
     }
 }
