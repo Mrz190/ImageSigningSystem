@@ -128,15 +128,19 @@ namespace API.Middleware
     // Handler class to process Digest Authentication requests
     public class DigestAuthenticationHandler : AuthenticationHandler<DigestAuthenticationOptions>
     {
+        private readonly IUserRepository _userRepository;
+
         public DigestAuthenticationHandler(
             IOptionsMonitor<DigestAuthenticationOptions> options,
             ILoggerFactory logger,
             System.Text.Encodings.Web.UrlEncoder encoder,
-            ISystemClock clock) : base(options, logger, encoder, clock)
+            ISystemClock clock,
+            IUserRepository userRepository) : base(options, logger, encoder, clock)
         {
+            _userRepository = userRepository;
         }
 
-        // Method to handle the authentication logic
+        // Метод обработки аутентификации
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             if (!Request.Headers.ContainsKey("Authorization"))
@@ -151,12 +155,31 @@ namespace API.Middleware
                 return AuthenticateResult.Fail("Invalid authentication scheme");
             }
 
-            var claims = new[] {
-                new Claim(ClaimTypes.NameIdentifier, "user"),
-                new Claim(ClaimTypes.Name, "user")
-            };
+            var digestValues = ParseDigestHeader(Request.Headers["Authorization"]);
 
-            // Create ClaimsIdentity from the claims
+            var username = digestValues["username"];
+            var user = await _userRepository.GetUserByUsernameAsync(username); // Получаем пользователя по имени
+
+            if (user == null)
+            {
+                return AuthenticateResult.Fail("Invalid username or password.");
+            }
+
+            // Получаем роли пользователя
+            var roles = await _userRepository.GetUserRolesAsync(user);
+
+            var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.UserName)
+        };
+
+            // Добавляем роли в ClaimsPrincipal
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
             var identity = new ClaimsIdentity(claims, Scheme.Name);
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
@@ -164,11 +187,30 @@ namespace API.Middleware
             return AuthenticateResult.Success(ticket);
         }
 
-        // Method to send a challenge response (401 Unauthorized)
+        // Метод отправки ответа с вызовом 401 (Unauthorized)
         protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
         {
             Response.Headers["WWW-Authenticate"] = $"Digest realm=\"{Options.Realm}\", qop=\"auth\"";
             Response.StatusCode = 401;
+        }
+
+        private Dictionary<string, string> ParseDigestHeader(string authorizationHeader)
+        {
+            var values = new Dictionary<string, string>();
+            var digestData = authorizationHeader.Substring("Digest ".Length);
+            var parts = digestData.Split(',');
+
+            foreach (var part in parts)
+            {
+                var kvp = part.Split(new[] { '=' }, 2);
+                if (kvp.Length == 2)
+                {
+                    var key = kvp[0].Trim();
+                    var value = kvp[1].Trim(' ', '"');
+                    values[key] = value;
+                }
+            }
+            return values;
         }
     }
 }

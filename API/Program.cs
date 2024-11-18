@@ -5,6 +5,7 @@ using API.Helpers;
 using API.Intefaces;
 using API.Middleware;
 using API.Repositories;
+using API.Services;
 using IdentityServer4.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -24,12 +25,18 @@ builder.Services.AddDbContext<DataContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<ImageService>();
 builder.Services.AddScoped<MD5Hash>();
 
 // Configure Identity
-builder.Services.AddIdentity<AppUser, AppRole>()
+builder.Services.AddIdentity<AppUser, AppRole>(options =>
+{
+    options.SignIn.RequireConfirmedAccount = true;
+})
     .AddEntityFrameworkStores<DataContext>()
     .AddDefaultTokenProviders();
+
 
 // Configure IdentityServer (without authentication)
 builder.Services.AddIdentityServer()
@@ -39,14 +46,11 @@ builder.Services.AddIdentityServer()
     .AddInMemoryApiScopes(new List<ApiScope>()) // Empty list of API scopes
     .AddAspNetIdentity<AppUser>(); // Link IdentityServer with ASP.NET Identity
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = "Digest";
-})
-.AddScheme<DigestAuthenticationOptions, DigestAuthenticationHandler>("Digest", options =>
-{
-    options.Realm = builder.Configuration.GetValue<string>("DigestRealm");
-});
+builder.Services.AddAuthentication("Digest") // Устанавливаем Digest как стандартную схему
+    .AddScheme<DigestAuthenticationOptions, DigestAuthenticationHandler>("Digest", options =>
+    {
+        options.Realm = builder.Configuration.GetValue<string>("DigestRealm");
+    });
 
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();

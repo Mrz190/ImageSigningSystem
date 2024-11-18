@@ -1,6 +1,12 @@
 ﻿using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp;
 using System.Security.Cryptography;
+using API.Entity;
+using Microsoft.EntityFrameworkCore;
+using API.Data;
+using API.Intefaces;
+using API.Dto;
+using AutoMapper;
 
 namespace API.Services
 {
@@ -8,14 +14,87 @@ namespace API.Services
     {
         private readonly string _privateKey;
         private readonly string _publicKey;
+        private readonly DataContext _context;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-        public ImageService()
+        public ImageService(DataContext context, IUnitOfWork unitOfWork, IMapper mapper)
         {
             string privateKeyPath = Path.Combine(Directory.GetCurrentDirectory(), "Keys", "private.key");
             _privateKey = System.IO.File.ReadAllText(privateKeyPath);
 
             string publicKeyPath = Path.Combine(Directory.GetCurrentDirectory(), "Keys", "public.key");
             _publicKey = System.IO.File.ReadAllText(publicKeyPath);
+
+            _context = context;
+            _unitOfWork = unitOfWork;
+            _mapper = mapper;
+        }
+
+        public async Task<bool> SignatureOperation(SignedImage image)
+        {
+            var signature = SignImageData(image.StrippedData);
+
+            // Signature in Exif of original data
+            byte[] signedImageData = AddSignatureToImageMetadata(image.ImageData, signature);
+
+            image.ImageData = signedImageData;
+            image.Signature = signature;
+            image.Status = ImageStatus.Signed;
+
+            var changes = _unitOfWork.Context.ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+            .ToList();
+
+            if (!changes.Any())
+                return false;
+
+            await _unitOfWork.CompleteAsync();
+            return true;
+        }
+
+        public async Task<List<ImageDto?>> GetUserImages(int userId)
+        {
+            List<ImageDto> imageDtos;
+
+            var images = await _context.SignedImages
+               .Where(img => img.UserId == userId)
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                imageDtos = images.Select(img => new ImageDto
+                {
+                    Id = img.Id,
+                    ImageName = img.ImageName,
+                    Status = img.Status.ToString()
+                }).ToList();
+                return imageDtos;
+            }
+            return null;
+        }
+
+        public async Task<bool> UploadSendImageForSigningToSupport(SignedImage image)
+        {
+            _context.SignedImages.Add(image);
+
+            var changes = _unitOfWork.Context.ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+            .ToList();
+
+            if (!changes.Any())
+                return false;
+
+            await _unitOfWork.CompleteAsync();
+
+            return true;
+        }
+
+        public async Task<SignedImage> GetImageById(int id)
+        {
+            var image = await _context.SignedImages.FindAsync(id);
+
+            return image;
         }
 
         // Extracting signature method
