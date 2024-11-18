@@ -367,6 +367,3 @@ FodyWeavers.xsd
 
 # Migrations
 /API/Migrations/
-
-# Keys
-/API/Keys
