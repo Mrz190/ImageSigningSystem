@@ -1,10 +1,8 @@
-﻿using API.Data;
-using API.Dto;
+﻿using API.Dto;
 using API.Entity;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace API.Controllers
@@ -38,14 +36,51 @@ namespace API.Controllers
             return Ok(images);
         }
 
-        [HttpPost("upload")]
-        public async Task<IActionResult> UploadImage(IFormFile file)
+        [HttpGet("signed-images")]
+        public async Task<IActionResult> GetUserSignedImages()
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             if (userId == 0)
             {
                 return Unauthorized("User not found.");
             }
+
+            var images = await _imageService.GetSignedImagesForUser(userId);
+
+            if (images == null)
+            {
+                return NotFound("No images found for this user.");
+            }
+
+            return Ok(images);
+        }
+
+        [HttpGet("rejected-images")]
+        public async Task<IActionResult> GetUserRejectedImages()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0)
+            {
+                return Unauthorized("User not found.");
+            }
+
+            var images = await _imageService.GetRejectedImagesForUser(userId);
+
+            if (images == null)
+            {
+                return NotFound("No images found for this user.");
+            }
+
+            return Ok(images);
+        }
+
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadImage(IFormFile file)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("User not found.");
+
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
 
             if (file.Length > 0)
             {
@@ -66,7 +101,8 @@ namespace API.Controllers
                         Signature = null,
                         UserId = userId,
                         ImageName = fileName, 
-                        Status = ImageStatus.AwaitingSignature
+                        Status = ImageStatus.AwaitingSignature.ToString(),
+                        UploadedBy = userName
                     };
 
                     var signImageChecker = await _imageService.UploadSendImageForSigningToSupport(signedImage);
@@ -81,7 +117,6 @@ namespace API.Controllers
         }
 
         // Download image method
-        [Authorize(AuthenticationSchemes = "Digest")]
         [HttpGet("download/{id}")]
         public async Task<IActionResult> DownloadImage(int id)
         {
@@ -89,11 +124,14 @@ namespace API.Controllers
 
             if (image == null) return NotFound("Image not found.");
 
-            return File(image.ImageData, "image/png");
+            var result = image;
+
+            _imageService.DeleteImage(image);
+
+            return File(result.ImageData, "image/png");
         }
 
         // Downloading original image method
-        [Authorize(AuthenticationSchemes = "Digest")]
         [HttpGet("download-without-exif/{id}")]
         public async Task<IActionResult> DownloadImageWithoutExif(int id)
         {
@@ -135,6 +173,14 @@ namespace API.Controllers
             }
 
             return Ok(signature);
+        }
+
+        [HttpGet("delete/{id}")]
+        public async Task<IActionResult> DeleteImage(int id)
+        {
+            var resultDeleting = await _imageService.DeleteImage(id);
+            if (resultDeleting == false) return BadRequest("Error while deliting image.");
+            return Ok("Image deleted.");
         }
     }
 }

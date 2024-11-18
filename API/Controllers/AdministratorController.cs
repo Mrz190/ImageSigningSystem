@@ -1,45 +1,42 @@
 ﻿using API.Data;
-using API.Entity;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers
 {
-    [Route("Support")]
-    [Authorize(AuthenticationSchemes = "Digest", Roles = "Support")]
-    public class SupportController : BaseApiController
+    [Route("Administrator")]
+    [Authorize(AuthenticationSchemes = "Digest", Roles = "Admin")]
+    public class AdministratorController : BaseApiController
     {
         private readonly ImageService _imageService;
         private readonly DataContext _context;
 
-        public SupportController(ImageService imageService, DataContext context)
+        public AdministratorController(ImageService imageService, DataContext context)
         {
             _imageService = imageService;
             _context = context;
         }
 
-        [HttpGet("get-support-images")]
-        public async Task<IActionResult> GetSupportImages()
+        [HttpGet("get-admin-images")]
+        public async Task<IActionResult> GetAdminImages()
         {
-            var images = await _imageService.GetSupportImages();
+            var images = await _imageService.GetAdminImages();
             if (images != null) return Ok(images);
             return NotFound("No images founded.");
         }
 
-        [HttpPost("request-signature/{imageId}")]
-        public async Task<IActionResult> RequestSignature(int imageId)
+        // Creating and adding signature into Exif method
+        [HttpPost("sign/{imageId}")]
+        public async Task<IActionResult> SignImage(int imageId)
         {
-            var image = await _context.SignedImages.FindAsync(imageId);
-            if (image == null || image.Status != ImageStatus.AwaitingSignature.ToString())
-            {
-                return NotFound("Image not found or already signed.");
-            }
+            var image = await _imageService.GetImageById(imageId);
+            if (image == null) return NotFound("Image not found.");
+            var signatureOperationResult = await _imageService.SignatureOperation(image);
 
-            image.Status = ImageStatus.PendingAdminSignature.ToString();
-            await _context.SaveChangesAsync();
-
-            return Ok("Signature request sent to Admin.");
+            if(signatureOperationResult == false) return BadRequest("Error while signing image.");
+            
+            return Ok("Image was signed, metadata was updated.");
         }
 
         [HttpPost("reject-signing/{id}")]

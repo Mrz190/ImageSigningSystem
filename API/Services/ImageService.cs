@@ -31,6 +31,49 @@ namespace API.Services
             _mapper = mapper;
         }
 
+        public async Task<List<ImageForAdminDto?>> GetAdminImages()
+        {
+            List<ImageForAdminDto> imageDtos;
+            var images = await _context.SignedImages
+               .Where(img => img.Status == ImageStatus.PendingAdminSignature.ToString())
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                imageDtos = images.Select(img => new ImageForAdminDto
+                {
+                    Id = img.Id,
+                    ImageName = img.ImageName,
+                    Status = img.Status.ToString(),
+                    UserName = img.UploadedBy
+                }).ToList();
+                return imageDtos;
+            }
+            return null;
+        }
+        
+        public async Task<List<ImageForSupportDto?>> GetSupportImages()
+        {
+            List<ImageForSupportDto> imageDtos;
+
+            var images = await _context.SignedImages
+               .Where(img => img.Status == ImageStatus.AwaitingSignature.ToString())
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                imageDtos = images.Select(img => new ImageForSupportDto
+                {
+                    Id = img.Id,
+                    ImageName = img.ImageName,
+                    Status = img.Status.ToString(),
+                    UserName = img.UploadedBy
+                }).ToList();
+                return imageDtos;
+            }
+            return null;
+        }
+
         public async Task<bool> SignatureOperation(SignedImage image)
         {
             var signature = SignImageData(image.StrippedData);
@@ -40,7 +83,7 @@ namespace API.Services
 
             image.ImageData = signedImageData;
             image.Signature = signature;
-            image.Status = ImageStatus.Signed;
+            image.Status = ImageStatus.Signed.ToString();
 
             var changes = _unitOfWork.Context.ChangeTracker.Entries()
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
@@ -59,6 +102,48 @@ namespace API.Services
 
             var images = await _context.SignedImages
                .Where(img => img.UserId == userId)
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                imageDtos = images.Select(img => new ImageDto
+                {
+                    Id = img.Id,
+                    ImageName = img.ImageName,
+                    Status = img.Status.ToString()
+                }).ToList();
+                return imageDtos;
+            }
+            return null;
+        }
+
+        public async Task<List<ImageDto?>> GetSignedImagesForUser(int userId)
+        {
+            List<ImageDto> imageDtos;
+
+            var images = await _context.SignedImages
+               .Where(img => img.UserId == userId && img.Status == ImageStatus.Signed.ToString())
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                imageDtos = images.Select(img => new ImageDto
+                {
+                    Id = img.Id,
+                    ImageName = img.ImageName,
+                    Status = img.Status.ToString()
+                }).ToList();
+                return imageDtos;
+            }
+            return null;
+        }
+
+        public async Task<List<ImageDto?>> GetRejectedImagesForUser(int userId)
+        {
+            List<ImageDto> imageDtos;
+
+            var images = await _context.SignedImages
+               .Where(img => img.UserId == userId && img.Status == ImageStatus.Rejected.ToString())
                .ToListAsync();
 
             if (images != null && images.Count != 0)
@@ -182,6 +267,40 @@ namespace API.Services
                     return ms.ToArray();
                 }
             }
+        }
+
+        public async Task<bool> DeleteImage(SignedImage image)
+        {
+            _context.SignedImages.Remove(image);
+
+            var changes = _unitOfWork.Context.ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+            .ToList();
+
+            if (!changes.Any())
+                return false;
+
+            await _unitOfWork.CompleteAsync();
+
+            return true;
+        }
+
+        public async Task<bool> DeleteImage(int id)
+        {
+            var image = await GetImageById(id);
+
+            _context.SignedImages.Remove(image);
+
+            var changes = _unitOfWork.Context.ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+            .ToList();
+
+            if (!changes.Any())
+                return false;
+
+            await _unitOfWork.CompleteAsync();
+
+            return true;
         }
     }
 }

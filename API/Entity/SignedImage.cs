@@ -33,6 +33,8 @@ namespace API.Entity
         [ForeignKey("UserId")]
         public AppUser User { get; set; }
 
-        public ImageStatus Status { get; set; } = ImageStatus.AwaitingSignature;
+        public string Status { get; set; } = ImageStatus.AwaitingSignature.ToString();
+
+        public string UploadedBy { get; set; }
     }
 }
