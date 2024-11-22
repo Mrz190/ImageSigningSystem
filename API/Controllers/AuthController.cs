@@ -2,12 +2,14 @@
 using API.Dto;
 using API.Entity;
 using API.Helpers;
+using API.Services;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using System.Security.Claims;
 
 namespace API.Controllers
 {
@@ -20,8 +22,9 @@ namespace API.Controllers
         private readonly IMapper _mapper;
         private readonly IConfiguration _config;
         private readonly MD5Hash _MD5;
+        private readonly ImageService _imageService;
 
-        public AuthController(UserManager<AppUser> userManager, IHttpContextAccessor httpContextAccessor, IMapper mapper, DataContext context, IConfiguration config, MD5Hash _MD5)
+        public AuthController(UserManager<AppUser> userManager, IHttpContextAccessor httpContextAccessor, IMapper mapper, DataContext context, IConfiguration config, MD5Hash _MD5, ImageService imageService)
         {
             _userManager = userManager;
             _httpContextAccessor = httpContextAccessor;
@@ -29,14 +32,15 @@ namespace API.Controllers
             _context = context;
             _config = config;
             this._MD5 = _MD5;
+            _imageService = imageService;
         }
 
         [AllowAnonymous]
         [HttpPost("Registration")]
         public async Task<ActionResult<UserDto>> Registragion(RegDto regDto)
         {
-            if (await UserExists(regDto.Username))
-                return BadRequest("User already exists.");
+            if (await UserExists(regDto.Username)) return BadRequest("User with this name already exists.");
+            if (await UserWithEmailExists(regDto.Email)) return BadRequest("User with this email already exists.");
 
             var user = _mapper.Map<AppUser>(regDto);
             user.UserName = regDto.Username.ToLower();
@@ -68,6 +72,7 @@ namespace API.Controllers
 
             var resultDto = new UserDto
             {
+                Id = user.Id,
                 UserName = user.UserName,
                 Email = user.Email
             };
@@ -91,6 +96,7 @@ namespace API.Controllers
 
             var resultDto = new UserDto
             {
+                Id = user.Id,
                 UserName = user.UserName,
                 Email = user.Email
             };
@@ -98,44 +104,47 @@ namespace API.Controllers
             return Ok(resultDto);
         }
 
-        [AllowAnonymous]
-        [HttpDelete("del/{id}")]
-        public async Task<IActionResult> DelUser(int id)
+        [Authorize(AuthenticationSchemes = "Digest", Roles = "User")]
+        [HttpDelete("delete-user/{userId}")]
+        public async Task<ActionResult> DelUser(int userId, [FromBody] PasswordRequest password)
         {
-            var user = await _userManager.Users.SingleOrDefaultAsync(n => n.Id == id);
-            if (user == null)
-            {
-                return NotFound("User not found.");
-            }
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
+            var user = await _userManager.Users.SingleOrDefaultAsync(n => n.Id == userId);
+
+            if (user.UserName != userName) return StatusCode(500, "Server error.");
+
+            if (user == null) return NotFound("User not found.");
+
+            var realm = _config.GetValue<string>("DigestRealm");
+            var ha1 = _MD5.CalculateMd5Hash($"{user.UserName}:{realm}:{password.Password}");
+
+            if (user.PasswordHash != ha1) return BadRequest("Password does not match.");
+
+            var deletingImagesResult = await _imageService.DeleteAllUserImages(user.Id);
+            if (deletingImagesResult == false) return BadRequest("Error while deliting images.");
 
             var roles = await _userManager.GetRolesAsync(user);
-            if (roles.Any())
-            {
-                await _userManager.RemoveFromRolesAsync(user, roles);
-            }
+            if (roles.Any()) await _userManager.RemoveFromRolesAsync(user, roles);
 
             var result = await _userManager.DeleteAsync(user);
 
-            if (result.Succeeded)
-            {
-                return Ok("User deleted.");
-            }
-            else
-            {
-                return BadRequest("Failed to delete user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-            }
-        }
-
-        [Authorize(AuthenticationSchemes = "Digest")]
-        [HttpGet("test-auth")]
-        public async Task<ActionResult> TestAuth()
-        {
-            return Ok("Test passed.");
+            if(result.Succeeded) return Ok("Account deleted.");
+            else return BadRequest("Failed to delete account: " + string.Join(", ", result.Errors.Select(e => e.Description)));
         }
 
         private async Task<bool> UserExists(string username)
         {
             return await _userManager.Users.AnyAsync(x => x.UserName == username.ToLower());
+        }
+        
+        private async Task<bool> UserWithEmailExists(string email)
+        {
+            return await _userManager.Users.AnyAsync(x => x.NormalizedEmail == email.ToUpper());
+        }
+
+        public class PasswordRequest
+        {
+            public string Password { get; set; }
         }
     }
 }

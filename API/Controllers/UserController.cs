@@ -2,6 +2,7 @@
 using API.Entity;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -12,13 +13,15 @@ namespace API.Controllers
     public class UserController : BaseApiController
     {
         private readonly ImageService _imageService;
-        public UserController(ImageService imageService)
+        private readonly UserManager<AppUser> _userManager;
+        public UserController(ImageService imageService, UserManager<AppUser> userManager)
         {
             _imageService = imageService;
+            _userManager = userManager;
         }
 
         [HttpGet("user-images")]
-        public async Task<IActionResult> GetUserImages()
+        public async Task<ActionResult> GetUserImages()
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             if (userId == 0)
@@ -37,7 +40,7 @@ namespace API.Controllers
         }
 
         [HttpGet("signed-images")]
-        public async Task<IActionResult> GetUserSignedImages()
+        public async Task<ActionResult> GetUserSignedImages()
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             if (userId == 0)
@@ -56,7 +59,7 @@ namespace API.Controllers
         }
 
         [HttpGet("rejected-images")]
-        public async Task<IActionResult> GetUserRejectedImages()
+        public async Task<ActionResult> GetUserRejectedImages()
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             if (userId == 0)
@@ -75,7 +78,7 @@ namespace API.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadImage(IFormFile file)
+        public async Task<ActionResult> UploadImage(IFormFile file)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             if (userId == 0) return Unauthorized("User not found.");
@@ -118,33 +121,40 @@ namespace API.Controllers
 
         // Download image method
         [HttpGet("download/{id}")]
-        public async Task<IActionResult> DownloadImage(int id)
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<ActionResult> DownloadImage(int id)
         {
             var image = await _imageService.GetImageById(id);
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
 
             if (image == null) return NotFound("Image not found.");
 
+            if (image.UploadedBy != userName) return NotFound($"Image not found.");
+
             var result = image;
 
-            _imageService.DeleteImage(image);
+            //_imageService.DeleteImage(image);
 
-            return File(result.ImageData, "image/png");
+            return File(image.ImageData, "image/jpeg", "downloaded_image.jpg");
         }
 
         // Downloading original image method
         [HttpGet("download-without-exif/{id}")]
-        public async Task<IActionResult> DownloadImageWithoutExif(int id)
+        public async Task<ActionResult> DownloadImageWithoutExif(int id)
         {
             var image = await _imageService.GetImageById(id);
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
 
             if (image == null) return NotFound("Image not found.");
 
-            return File(image.StrippedData, "image/png");
+            if (image.UploadedBy != userName) return NotFound($"Image not found.");
+
+            return File(image.StrippedData, "image/jpeg");
         }
 
         // Verify signature
-        [HttpPost("verify-signature/{imageId}")]
-        public async Task<IActionResult> VerifyImageSignature(int imageId)
+        [HttpGet("verify-signature/{imageId}")]
+        public async Task<ActionResult> VerifyImageSignature(int imageId)
         {
             var image = await _imageService.GetImageById(imageId);
             if (image == null) return NotFound("Image not found.");
@@ -153,14 +163,14 @@ namespace API.Controllers
             var signature = _imageService.ExtractSignatureFromImageMetadata(image.ImageData);
             if (string.IsNullOrEmpty(signature)) return BadRequest("Signature not found in metadata.");
 
-            // Vervify original data without Exif
+            // Verify original data without Exif
             bool isValid = _imageService.VerifySignature(image.StrippedData, signature);
             return isValid ? Ok("Signature valid.") : BadRequest("Signature invalid.");
         }
 
         // Extracting metadata from signature
         [HttpGet("get-signature/{imageId}")]
-        public async Task<IActionResult> GetSignatureFromImageMetadata(int imageId)
+        public async Task<ActionResult> GetSignatureFromImageMetadata(int imageId)
         {
             var image = await _imageService.GetImageById(imageId);
             if (image == null) return NotFound("Image not found.");
@@ -175,12 +185,33 @@ namespace API.Controllers
             return Ok(signature);
         }
 
-        [HttpGet("delete/{id}")]
-        public async Task<IActionResult> DeleteImage(int id)
+        [HttpDelete("delete-image/{id}")]
+        public async Task<ActionResult> DeleteImage(int id)
         {
             var resultDeleting = await _imageService.DeleteImage(id);
             if (resultDeleting == false) return BadRequest("Error while deliting image.");
             return Ok("Image deleted.");
+        }
+
+        [HttpGet("get-user-data")]
+        public async Task<ActionResult> GetUserData()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId)) return Unauthorized("User not found.");
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null) return Unauthorized("User not found.");
+
+            var userResultData = new
+            {
+                id = user.Id,
+                userName = user.UserName,
+                email = user.Email
+            };
+
+            return Ok(userResultData);
         }
     }
 }

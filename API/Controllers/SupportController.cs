@@ -3,6 +3,7 @@ using API.Entity;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace API.Controllers
 {
@@ -42,17 +43,26 @@ namespace API.Controllers
             return Ok("Signature request sent to Admin.");
         }
 
-        [HttpPost("reject-signing/{id}")]
+        [HttpPost("reject-signing/{imageId}")]
         public async Task<IActionResult> RejectSigingImage(int imageId)
         {
             var image = await _imageService.GetImageById(imageId);
             if (image == null) return NotFound("Image not found.");
 
-            var signatureOperationResult = await _imageService.SignatureOperation(image);
+            var rejectingResult = await _imageService.RejectSigningImage(image);
 
-            if (signatureOperationResult == false) return BadRequest("Error while rejecting signing the image.");
+            if (rejectingResult == false) return BadRequest("Error while rejecting image.");
 
-            return Ok("Image was signed, metadata was updated.");
+            return Ok("Signing the image was rejected.");
+        }
+
+        [HttpGet("view-image/{imageId}")]
+        public async Task<IActionResult> ViewImage(int imageId)
+        {
+            var image = await _imageService.GetImageById(imageId);
+            if (image == null) return NotFound("Image not found.");
+
+            return File(image.ImageData, "image/png");
         }
     }
 }
