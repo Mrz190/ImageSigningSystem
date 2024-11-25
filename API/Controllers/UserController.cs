@@ -85,71 +85,68 @@ namespace API.Controllers
 
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
 
-            if (file.Length > 0)
+            if (file == null || file.Length == 0)
+                return BadRequest("Image not provided.");
+
+            var fileName = Path.GetFileName(file.FileName);
+            var fileExtension = Path.GetExtension(fileName).ToLower();
+
+            if (fileExtension != ".png")
+                return BadRequest("Only PNG files are allowed.");
+
+            if (!file.ContentType.Equals("image/png", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Invalid file type. Only PNG images are supported.");
+
+            using (var memoryStream = new MemoryStream())
             {
-                var fileName = Path.GetFileName(file.FileName);
+                await file.CopyToAsync(memoryStream);
+                var originalImageData = memoryStream.ToArray();
 
-                var fileExtension = Path.GetExtension(fileName);
+                var fileFormat = _imageService.GetFileFormat(originalImageData);
+                if (fileFormat != "PNG")
+                    return BadRequest("Invalid file format. Only PNG files are allowed.");
 
-                using (var memoryStream = new MemoryStream())
+                byte[] strippedImageData = _imageService.RemoveMetadata(originalImageData);
+
+                var signedImage = new SignedImage
                 {
-                    await file.CopyToAsync(memoryStream);
-                    var originalImageData = memoryStream.ToArray();
-                    byte[] strippedImageData = _imageService.StripExif(originalImageData);
+                    ImageData = originalImageData,
+                    StrippedData = strippedImageData,
+                    Signature = null,
+                    UserId = userId,
+                    ImageName = fileName,
+                    Status = ImageStatus.AwaitingSignature.ToString(),
+                    UploadedBy = userName
+                };
 
-                    var signedImage = new SignedImage
-                    {
-                        ImageData = originalImageData,
-                        StrippedData = strippedImageData,
-                        Signature = null,
-                        UserId = userId,
-                        ImageName = fileName, 
-                        Status = ImageStatus.AwaitingSignature.ToString(),
-                        UploadedBy = userName
-                    };
+                var signImageChecker = await _imageService.UploadSendImageForSigningToSupport(signedImage);
 
-                    var signImageChecker = await _imageService.UploadSendImageForSigningToSupport(signedImage);
+                if (signImageChecker != true)
+                    return BadRequest("Error while uploading image.");
 
-                    if (signImageChecker != true) return BadRequest("Error while uploading image.");
-
-                    return Ok("Image uploaded.");
-                }
+                return Ok("Image uploaded.");
             }
-
-            return BadRequest("Image not provided.");
         }
+
 
         // Download image method
         [HttpGet("download/{id}")]
-        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<ActionResult> DownloadImage(int id)
         {
             var image = await _imageService.GetImageById(id);
             var userName = User.FindFirst(ClaimTypes.Name)?.Value;
+            var imageData = image.ImageData;
+            var imageName = image.ImageName;
 
             if (image == null) return NotFound("Image not found.");
 
             if (image.UploadedBy != userName) return NotFound($"Image not found.");
 
-            var result = image;
+            var deletingResult = await _imageService.DeleteImage(image);
 
-            //_imageService.DeleteImage(image);
+            if (deletingResult != true) return BadRequest("Error while deleting image.");
 
-            return File(image.ImageData, "image/jpeg", "downloaded_image.jpg");
-        }
-
-        // Downloading original image method
-        [HttpGet("download-without-exif/{id}")]
-        public async Task<ActionResult> DownloadImageWithoutExif(int id)
-        {
-            var image = await _imageService.GetImageById(id);
-            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
-
-            if (image == null) return NotFound("Image not found.");
-
-            if (image.UploadedBy != userName) return NotFound($"Image not found.");
-
-            return File(image.StrippedData, "image/jpeg");
+            return File(imageData, "image/png", $"{image.ImageName}.png");
         }
 
         // Verify signature
@@ -160,7 +157,7 @@ namespace API.Controllers
             if (image == null) return NotFound("Image not found.");
 
             // Extract signature from metadata
-            var signature = _imageService.ExtractSignatureFromImageMetadata(image.ImageData);
+            var signature = _imageService.ExtractSignatureFromPngMetadata(image.ImageData);
             if (string.IsNullOrEmpty(signature)) return BadRequest("Signature not found in metadata.");
 
             // Verify original data without Exif
@@ -175,7 +172,7 @@ namespace API.Controllers
             var image = await _imageService.GetImageById(imageId);
             if (image == null) return NotFound("Image not found.");
 
-            var signature = _imageService.ExtractSignatureFromImageMetadata(image.ImageData);
+            var signature = _imageService.ExtractSignatureFromPngMetadata(image.ImageData);
 
             if (string.IsNullOrEmpty(signature))
             {

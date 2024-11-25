@@ -1,5 +1,4 @@
-﻿using API.Dto;
-using API.Services;
+﻿using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,36 +23,16 @@ namespace API.Controllers
 
             var fileBytes = await _imageService.ConvertToByteArrayAsync(file);
 
-            //var fileFormat = _imageService.GetFileFormat(fileBytes);
-
-            //if (fileFormat == "Unknown")
-            //    return BadRequest("Unsupported file format. Only JPG and PNG are supported.");
-
             var fileFormat = _imageService.GetFileFormat(fileBytes);
+            if (fileFormat != "PNG")
+                return BadRequest("Unsupported file format. Only PNG files are supported.");
 
-            string signature = fileFormat switch
-            {
-                "JPG" => _imageService.ExtractSignatureFromJpgMetadata(fileBytes),
-                "PNG" => _imageService.ExtractSignatureFromPngMetadata(fileBytes),
-                _ => throw new NotSupportedException("Unsupported file format")
-            };
+            var signature = _imageService.ExtractSignatureFromPngMetadata(fileBytes);
+            if (string.IsNullOrEmpty(signature))
+                return BadRequest("Signature not found in metadata.");
 
-            //string signature;
-
-            if (fileFormat == "JPG")
-            {
-                signature = _imageService.ExtractSignatureFromJpgMetadata(fileBytes);
-            }
-            else if (fileFormat == "PNG")
-            {
-                signature = _imageService.ExtractSignatureFromPngMetadata(fileBytes);
-            }
-            else
-            {
-                return BadRequest("Unsupported file format.");
-            }
-
-            if (string.IsNullOrEmpty(signature)) return BadRequest("Signature not found in metadata.");
+            if (string.IsNullOrEmpty(signature))
+                return BadRequest("Signature not found in metadata.");
 
             return Ok(signature);
         }
@@ -65,22 +44,20 @@ namespace API.Controllers
                 return BadRequest("File is not provided or empty.");
 
             var fileBytes = await _imageService.ConvertToByteArrayAsync(file);
+
             var fileFormat = _imageService.GetFileFormat(fileBytes);
+            if (fileFormat != "PNG")
+                return BadRequest("Unsupported file format. Only PNG files are supported.");
 
-            string signature = fileFormat switch
-            {
-                "JPG" => _imageService.ExtractSignatureFromJpgMetadata(fileBytes),
-                "PNG" => _imageService.ExtractSignatureFromPngMetadata(fileBytes),
-                _ => throw new NotSupportedException("Unsupported file format")
-            };
+            var signature = _imageService.ExtractSignatureFromPngMetadata(fileBytes);
+            if (string.IsNullOrEmpty(signature))
+                return BadRequest("Signature not found in metadata.");
 
-            if (string.IsNullOrEmpty(signature)) return BadRequest("Signature not found in metadata.");
-
-            var strippedImageData = _imageService.RemoveUserComment(fileBytes);
+            // Removing signature for verification
+            var strippedImageData = _imageService.RemoveMetadata(fileBytes);
 
             bool isValid = _imageService.VerifySignature(strippedImageData, signature);
             return isValid ? Ok("Signature valid.") : BadRequest("Signature invalid.");
         }
-
     }
 }

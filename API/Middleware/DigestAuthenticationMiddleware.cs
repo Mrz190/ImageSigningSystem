@@ -1,5 +1,5 @@
 ﻿using API.Helpers;
-using API.Intefaces;
+using API.Interfaces;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;

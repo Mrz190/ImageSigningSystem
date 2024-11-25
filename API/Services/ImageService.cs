@@ -1,13 +1,12 @@
-﻿using SixLabors.ImageSharp.Metadata.Profiles.Exif;
-using SixLabors.ImageSharp;
+﻿using SixLabors.ImageSharp;
 using System.Security.Cryptography;
 using API.Entity;
 using Microsoft.EntityFrameworkCore;
 using API.Data;
-using API.Intefaces;
 using API.Dto;
 using AutoMapper;
-using SixLabors.ImageSharp.Formats.Jpeg;
+using API.Interfaces;
+using SixLabors.ImageSharp.Formats.Png;
 
 namespace API.Services
 {
@@ -52,7 +51,7 @@ namespace API.Services
             }
             return null;
         }
-        
+
         public async Task<bool> RejectSigningImage(SignedImage image)
         {
             image.Status = ImageStatus.Rejected.ToString();
@@ -94,21 +93,20 @@ namespace API.Services
         public async Task<bool> SignatureOperation(SignedImage image)
         {
             Console.WriteLine($"Before adding signature: {image.ImageData.Length} bytes");
+
             var signature = SignImageData(image.StrippedData);
 
-            // Signature in Exif of original data
             byte[] signedImageData = AddSignatureToImageMetadata(image.ImageData, signature);
 
             Console.WriteLine($"After adding signature: {signedImageData.Length} bytes");
-
 
             image.ImageData = signedImageData;
             image.Signature = signature;
             image.Status = ImageStatus.Signed.ToString();
 
             var changes = _unitOfWork.Context.ChangeTracker.Entries()
-            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
-            .ToList();
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+                .ToList();
 
             if (!changes.Any())
                 return false;
@@ -136,6 +134,22 @@ namespace API.Services
                 return imageDtos;
             }
             return null;
+        }
+
+        public byte[] RemoveMetadata(byte[] fileBytes)
+        {
+            using var image = Image.Load(fileBytes);
+
+            var pngMetadata = image.Metadata.GetFormatMetadata(PngFormat.Instance);
+            if (pngMetadata != null)
+            {
+                pngMetadata.TextData.Clear(); // Remove text data
+            }
+
+            // Save image without metadata
+            using var memoryStream = new MemoryStream();
+            image.Save(memoryStream, new PngEncoder());
+            return memoryStream.ToArray();
         }
 
         public async Task<List<ImageDto?>> GetSignedImagesForUser(int userId)
@@ -204,68 +218,34 @@ namespace API.Services
         }
 
         // Extracting signature method
-        public string ExtractSignatureFromImageMetadata(byte[] imageData)
+        public string ExtractSignatureFromPngMetadata(byte[] fileBytes)
         {
-            using (var image = Image.Load(imageData))
+            using var image = Image.Load(fileBytes);
+            
+            var pngMetadata = image.Metadata.GetFormatMetadata(PngFormat.Instance);
+
+            if (pngMetadata != null)
             {
-                var exifProfile = image.Metadata.ExifProfile;
-                if (exifProfile != null)
-                {
-                    var userComment = exifProfile.GetValue(ExifTag.UserComment);
-                    return userComment?.Value.ToString();
-                }
+                // Find field "Signature"
+                return pngMetadata.TextData
+                    .FirstOrDefault(t => t.Keyword.Equals("Signature", StringComparison.OrdinalIgnoreCase))
+                    .Value;
             }
-            return null;
+
+            return string.Empty;
         }
 
-        public string ExtractSignatureFromJpgMetadata(byte[] imageData)
+        public async Task<byte[]> ConvertToByteArrayAsync(IFormFile file)
         {
-            using (var image = Image.Load(imageData))
-            {
-                var exifProfile = image.Metadata.ExifProfile;
-                if (exifProfile != null)
-                {
-                    var userComment = exifProfile.GetValue(ExifTag.UserComment);
-                    return userComment?.Value.ToString();
-                }
-            }
-            return null;
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            return memoryStream.ToArray();
         }
 
-        public string ExtractSignatureFromPngMetadata(byte[] imageData)
-        {
-            using (var image = Image.Load(imageData))
-            {
-                var exifProfile = image.Metadata.ExifProfile;
-                if (exifProfile != null)
-                {
-                    var userComment = exifProfile.GetValue(ExifTag.UserComment);
-                    return userComment?.Value.ToString();
-                }
-            }
-            return null;
-        }
-
-        public async Task<byte[]> ConvertToByteArrayAsync(IFormFile formFile)
-        {
-            if (formFile == null || formFile.Length == 0)
-                return null;
-
-            using (var memoryStream = new MemoryStream())
-            {
-                await formFile.CopyToAsync(memoryStream);
-                return memoryStream.ToArray();
-            }
-        }
-        
         public string GetFileFormat(byte[] fileBytes)
         {
-            if (fileBytes.Take(2).SequenceEqual(new byte[] { 0xFF, 0xD8 }))
-                return "JPG";
-            if (fileBytes.Take(8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }))
-                return "PNG";
-
-            return "Unknown";
+            using var image = Image.Load(fileBytes, out var format);
+            return format.Name.ToUpper();
         }
 
         // Checking signature method
@@ -288,7 +268,7 @@ namespace API.Services
                 Console.WriteLine($"Error: {ex.Message}");
                 return false;
             }
-         }
+        }
 
         // Signing image with primary key method
         public string SignImageData(byte[] imageData)
@@ -312,49 +292,58 @@ namespace API.Services
         {
             using (var image = Image.Load(imageData))
             {
-                var exifProfile = image.Metadata.ExifProfile ?? new ExifProfile();
-                image.Metadata.ExifProfile = exifProfile;
+                var pngMetadata = image.Metadata.GetFormatMetadata(PngFormat.Instance);
 
-                // Add signature to tag UserComment
-                exifProfile.SetValue(ExifTag.UserComment, signature);
+                if (pngMetadata != null)
+                {
+                    var existing = pngMetadata.TextData
+                        .FirstOrDefault(t => t.Keyword.Equals("Signature", StringComparison.OrdinalIgnoreCase));
+                    if (existing != null)
+                        pngMetadata.TextData.Remove(existing);
+
+                    pngMetadata.TextData.Add(new PngTextData("Signature", signature, null, null));
+                }
 
                 using (var ms = new MemoryStream())
                 {
-                    image.SaveAsJpeg(ms, new JpegEncoder { Quality = 100 });
+                    image.Save(ms, new PngEncoder());
                     return ms.ToArray();
                 }
             }
         }
 
         // Removing Exif before hashing merthod
-        public byte[] StripExif(byte[] imageData)
+        public byte[] StripExif(byte[] fileBytes)
         {
-            using (var image = Image.Load(imageData))
-            {
-                image.Metadata.ExifProfile = null;
+            using var image = Image.Load(fileBytes);
 
-                using (var ms = new MemoryStream())
-                {
-                    image.SaveAsJpeg(ms, new JpegEncoder { Quality = 100 });
-                    return ms.ToArray();
-                }
-            }
+            image.Metadata.ExifProfile = null;
+
+            var pngMetadata = image.Metadata.GetFormatMetadata(PngFormat.Instance);
+            pngMetadata?.TextData.Clear();
+
+            using var memoryStream = new MemoryStream();
+            image.Save(memoryStream, new PngEncoder());
+            return memoryStream.ToArray();
         }
 
         public byte[] RemoveUserComment(byte[] imageData)
         {
             using (var image = Image.Load(imageData))
             {
-                var exifProfile = image.Metadata.ExifProfile;
+                var pngMetadata = image.Metadata.GetFormatMetadata(PngFormat.Instance);
 
-                if (exifProfile != null)
+                if (pngMetadata != null)
                 {
-                    exifProfile.RemoveValue(ExifTag.UserComment);
+                    var existing = pngMetadata.TextData
+                        .FirstOrDefault(t => t.Keyword.Equals("Signature", StringComparison.OrdinalIgnoreCase));
+                    if (existing != null)
+                        pngMetadata.TextData.Remove(existing);
                 }
 
                 using (var ms = new MemoryStream())
                 {
-                    image.SaveAsJpeg(ms, new JpegEncoder { Quality = 100 });
+                    image.Save(ms, new PngEncoder());
                     return ms.ToArray();
                 }
             }
@@ -398,7 +387,7 @@ namespace API.Services
         {
             var images = await GetAllUserImages(userId);
 
-            if(images.Count != 0)
+            if (images.Count != 0)
             {
                 foreach (var image in images)
                 {

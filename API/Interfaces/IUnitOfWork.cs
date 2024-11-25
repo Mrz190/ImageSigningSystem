@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace API.Intefaces
+namespace API.Interfaces
 {
     public interface IUnitOfWork : IDisposable
     {

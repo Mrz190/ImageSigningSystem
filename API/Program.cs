@@ -2,7 +2,7 @@ using API.Data;
 using API.Entity;
 using API.Extensions;
 using API.Helpers;
-using API.Intefaces;
+using API.Interfaces;
 using API.Middleware;
 using API.Repositories;
 using API.Services;

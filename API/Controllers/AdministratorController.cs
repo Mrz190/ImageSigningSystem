@@ -39,8 +39,8 @@ namespace API.Controllers
             if (image == null) return NotFound("Image not found.");
             var signatureOperationResult = await _imageService.SignatureOperation(image);
 
-            if(signatureOperationResult == false) return BadRequest("Error while signing image.");
-            
+            if (signatureOperationResult == false) return BadRequest("Error while signing image.");
+
             return Ok("Image was signed, metadata was updated.");
         }
 
