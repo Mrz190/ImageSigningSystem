@@ -27,8 +27,8 @@ namespace API.Controllers
         public async Task<ActionResult> GetAdminImages()
         {
             var images = await _imageService.GetAdminImages();
-            if (images != null) return Ok(images);
-            return NotFound("No images founded.");
+            if (images == null) return NotFound("No images found.");
+            return Ok(images);
         }
 
         // Creating and adding signature into Exif method

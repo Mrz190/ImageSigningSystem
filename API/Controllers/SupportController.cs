@@ -23,8 +23,8 @@ namespace API.Controllers
         public async Task<IActionResult> GetSupportImages()
         {
             var images = await _imageService.GetSupportImages();
-            if (images != null) return Ok(images);
-            return NotFound("No images founded.");
+            if (images == null) return NotFound("No images found for this user.");
+            return Ok(images);
         }
 
         [HttpPost("request-signature/{imageId}")]
@@ -60,6 +60,10 @@ namespace API.Controllers
         {
             var image = await _imageService.GetImageById(imageId);
             if (image == null) return NotFound("Image not found.");
+            if(image.Status != ImageStatus.AwaitingSignature.ToString())
+            {
+                return BadRequest("You haven't permission for this.");
+            }
 
             return File(image.ImageData, "image/png");
         }

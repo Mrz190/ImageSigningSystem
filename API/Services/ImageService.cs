@@ -36,19 +36,20 @@ namespace API.Services
             List<ImageForAdminDto> imageDtos;
             var images = await _context.SignedImages
                .Where(img => img.Status == ImageStatus.PendingAdminSignature.ToString())
+               .Select(img => new ImageForAdminDto
+               {
+                   Id = img.Id,
+                   ImageName = img.ImageName,
+                   Status = img.Status.ToString(),
+                   UserName = img.UploadedBy
+               })
                .ToListAsync();
 
             if (images != null && images.Count != 0)
             {
-                imageDtos = images.Select(img => new ImageForAdminDto
-                {
-                    Id = img.Id,
-                    ImageName = img.ImageName,
-                    Status = img.Status.ToString(),
-                    UserName = img.UploadedBy
-                }).ToList();
-                return imageDtos;
+                return images;
             }
+
             return null;
         }
 
@@ -74,18 +75,18 @@ namespace API.Services
 
             var images = await _context.SignedImages
                .Where(img => img.Status == ImageStatus.AwaitingSignature.ToString())
+               .Select(img => new ImageForSupportDto
+               {
+                   Id = img.Id,
+                   ImageName = img.ImageName,
+                   Status = img.Status.ToString(),
+                   UserName = img.UploadedBy
+               })
                .ToListAsync();
 
             if (images != null && images.Count != 0)
             {
-                imageDtos = images.Select(img => new ImageForSupportDto
-                {
-                    Id = img.Id,
-                    ImageName = img.ImageName,
-                    Status = img.Status.ToString(),
-                    UserName = img.UploadedBy
-                }).ToList();
-                return imageDtos;
+                return images;
             }
             return null;
         }
@@ -121,17 +122,17 @@ namespace API.Services
 
             var images = await _context.SignedImages
                .Where(img => img.UserId == userId)
+               .Select(img => new ImageDto
+               {
+                   Id = img.Id,
+                   ImageName = img.ImageName,
+                   Status = img.Status.ToString()
+               })
                .ToListAsync();
 
             if (images != null && images.Count != 0)
             {
-                imageDtos = images.Select(img => new ImageDto
-                {
-                    Id = img.Id,
-                    ImageName = img.ImageName,
-                    Status = img.Status.ToString()
-                }).ToList();
-                return imageDtos;
+                return images;
             }
             return null;
         }
@@ -213,6 +214,13 @@ namespace API.Services
         public async Task<SignedImage> GetImageById(int id)
         {
             var image = await _context.SignedImages.FindAsync(id);
+
+            return image;
+        }
+
+        public async Task<object> GetImagesDataBy(int id)
+        {
+            var image = await _context.SignedImages.Select(img => new { img.Id, img.ImageName, img.Status, img.UploadedBy }).FirstOrDefaultAsync();
 
             return image;
         }

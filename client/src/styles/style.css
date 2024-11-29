@@ -162,7 +162,7 @@
     transform: scale(0.98);
 }
 
-.loading {
+.loading, .error, .no-images {
 	color: #eee;
 	margin-top: 20px;
 	font-size: 25px;

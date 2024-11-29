@@ -208,5 +208,19 @@ namespace API.Controllers
 
             return Ok(userResultData);
         }
+
+        [HttpGet("view-image/{imageId}")]
+        public async Task<IActionResult> ViewImage(int imageId)
+        {
+            var image = await _imageService.GetImageById(imageId);
+            if (image == null) return NotFound("Image not found.");
+            var currentUserName = User.FindFirst(ClaimTypes.Name)?.Value;
+            if (image.UploadedBy != currentUserName)
+            {
+                return BadRequest("No images found.");
+            }
+
+            return File(image.ImageData, "image/png");
+        }
     }
 }
