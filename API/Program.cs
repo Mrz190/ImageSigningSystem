@@ -26,6 +26,7 @@ builder.Services.AddDbContext<DataContext>(options =>
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IDigestAuthenticationService, DigestAuthenticationService>();
 builder.Services.AddScoped<ImageService>();
 builder.Services.AddScoped<MD5Hash>();
 
@@ -57,6 +58,18 @@ builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyHeader()
+               .AllowAnyMethod()
+               .WithExposedHeaders("*");
+    });
+});
+
+
 // Configure AutoMapper and other services
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
@@ -72,6 +85,8 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
     });
 }
+
+app.UseCors("AllowAllOrigins");
 
 app.UseRouting();
 

@@ -1,5 +1,4 @@
-﻿using API.Dto;
-using API.Entity;
+﻿using API.Entity;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -20,7 +19,7 @@ namespace API.Controllers
             _userManager = userManager;
         }
 
-        [HttpGet("user-images")]
+        [HttpGet("get-user-images")]
         public async Task<ActionResult> GetUserImages()
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
@@ -57,7 +56,7 @@ namespace API.Controllers
 
             return Ok(images);
         }
-
+        
         [HttpGet("rejected-images")]
         public async Task<ActionResult> GetUserRejectedImages()
         {
@@ -127,7 +126,6 @@ namespace API.Controllers
                 return Ok("Image uploaded.");
             }
         }
-
 
         // Download image method
         [HttpGet("download/{id}")]

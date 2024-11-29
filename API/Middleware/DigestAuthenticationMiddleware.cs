@@ -140,7 +140,6 @@ namespace API.Middleware
             _userRepository = userRepository;
         }
 
-        // Метод обработки аутентификации
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             if (!Request.Headers.ContainsKey("Authorization"))
@@ -158,14 +157,13 @@ namespace API.Middleware
             var digestValues = ParseDigestHeader(Request.Headers["Authorization"]);
 
             var username = digestValues["username"];
-            var user = await _userRepository.GetUserByUsernameAsync(username); // Получаем пользователя по имени
+            var user = await _userRepository.GetUserByUsernameAsync(username);
 
             if (user == null)
             {
                 return AuthenticateResult.Fail("Invalid username or password.");
             }
 
-            // Получаем роли пользователя
             var roles = await _userRepository.GetUserRolesAsync(user);
 
             var claims = new List<Claim>
@@ -174,7 +172,6 @@ namespace API.Middleware
             new Claim(ClaimTypes.Name, user.UserName)
         };
 
-            // Добавляем роли в ClaimsPrincipal
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
@@ -187,7 +184,6 @@ namespace API.Middleware
             return AuthenticateResult.Success(ticket);
         }
 
-        // Метод отправки ответа с вызовом 401 (Unauthorized)
         protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
         {
             Response.Headers["WWW-Authenticate"] = $"Digest realm=\"{Options.Realm}\", qop=\"auth\"";
