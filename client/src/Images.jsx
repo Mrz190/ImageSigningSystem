@@ -174,7 +174,6 @@ const Images = () => {
     } catch (err) {
       setError(err.message);
     } finally {
-      debugger
       fetchImages();
       setLoading(false);
     }

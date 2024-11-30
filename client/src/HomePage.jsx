@@ -12,7 +12,6 @@ const HomePage = () => {
   const [isUserRole, setIsUserRole] = useState(false);
 
   useEffect(() => {
-    // Проверяем роль пользователя при загрузке компонента
     const role = localStorage.getItem("role");
     setIsUserRole(role === "User");
   }, []);
@@ -20,6 +19,8 @@ const HomePage = () => {
   const handleLogout = () => {
     localStorage.removeItem("userPasswordHash");
     localStorage.removeItem("token");
+    localStorage.removeItem("realm");
+    localStorage.removeItem("username");
     localStorage.removeItem("role");
     window.location.href = "/auth";
   };
@@ -135,23 +136,23 @@ const HomePage = () => {
         )}
         <div className="images-container">
           {loading ? (
-            <div className="loading-container">
-              <div className="spinner-container">
-                <div className="spinner">
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                </div>
-                <p className="loading">Loading...</p>
-              </div>
-            </div>
+           <div className="loading-container">
+           <div className="spinner-container">
+             <div className="spinner">
+               <div></div>
+               <div></div>
+               <div></div>
+               <div></div>
+               <div></div>
+               <div></div>
+               <div></div>
+               <div></div>
+               <div></div>
+               <div></div>
+             </div>
+             <p className="loading">Loading...</p>
+           </div>
+         </div>
           ) : (
             <Images refreshImages={refreshImages} />
           )}

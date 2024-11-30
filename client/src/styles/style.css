@@ -82,6 +82,10 @@
 	cursor: pointer;
 }
 
+.success-message {
+	text-align: center;
+}
+
 .login {
 	height: 460px;
 	background: #eee;

@@ -13,6 +13,7 @@ const calculateDigest = (username, password, realm, nonce, uri, method, qop, nc,
 const AuthForm = () => {
     const [loginData, setLoginData] = useState({ userName: "", password: "" });
     const [registrationData, setRegistrationData] = useState({ username: "", password: "", email: "" });
+    const [registrationSuccess, setRegistrationSuccess] = useState(false);
     const navigate = useNavigate();
 
     const handleLoginChange = (e) => {
@@ -93,7 +94,8 @@ const AuthForm = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                alert("Registration successful!");
+                setRegistrationSuccess(true);
+                setRegistrationData({ username: "", password: "", email: "" });
             } else {
                 alert("Registration failed. Please try again.");
             }
@@ -140,6 +142,12 @@ const AuthForm = () => {
                     />
                     <button className="send-btn" type="submit">Sign up</button>
                 </form>
+
+                {registrationSuccess && (
+                    <div className="success-message">
+                        <p>Registration successful! Please log in.</p>
+                    </div>
+                )}
             </div>
 
             <div className="login">
