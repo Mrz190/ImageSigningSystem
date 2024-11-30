@@ -1,14 +1,14 @@
-#chk{
+#chk {
 	display: none;
 }
 
-.signup{
+.signup {
 	position: relative;
-	width:100%;
+	width: 100%;
 	height: 100%;
 }
 
-.reglog-input{
+.reglog-input {
 	width: 70%;
 	height: 15px;
 	background: #e0dede;
@@ -19,7 +19,7 @@
 	border: none;
 	outline: none;
 	border-radius: 5px;
-    transition: 0.4s ease-in-out;
+	transition: 0.4s ease-in-out;
 }
 
 .send-input {
@@ -33,20 +33,20 @@
 	border: none;
 	outline: none;
 	border-radius: 5px;
-    transition: 0.4s;
+	transition: 0.4s;
 }
 
 .reg-input:focus {
-    background: #5759b6b6;
-    color: #ffffff;
+	background: #5759b6b6;
+	color: #ffffff;
 }
 
 .log-input:focus {
-    background: #5759b6;
-    color: #ffffff;
+	background: #5759b6;
+	color: #ffffff;
 }
 
-.send-btn{
+.send-btn {
 	width: 60%;
 	height: 40px;
 	margin: 10px auto;
@@ -69,10 +69,20 @@
 }
 
 .send-btn:active {
-    transform: scale(0.88);
+	transform: scale(0.88);
 }
 
-.login{
+.reload-btn {
+	width: fit-content;
+	height: fit-content;
+	padding: 15px;
+	border: none;
+	border-radius: 0px;
+	background: url("../img/reload.png") center no-repeat;
+	cursor: pointer;
+}
+
+.login {
 	height: 460px;
 	background: #eee;
 	border-radius: 60% / 10%;
@@ -80,20 +90,20 @@
 	transition: .8s ease-in-out;
 }
 
-.login label{
+.login label {
 	color: #573b8a;
 	transform: scale(.6);
 }
 
-#chk:checked ~ .login{
+#chk:checked~.login {
 	transform: translateY(-500px);
 }
 
-#chk:checked ~ .login label{
-	transform: scale(1);	
+#chk:checked~.login label {
+	transform: scale(1);
 }
 
-#chk:checked ~ .signup label{
+#chk:checked~.signup label {
 	transform: scale(.6);
 }
 
@@ -111,11 +121,13 @@
 .chosen-image {
 	margin-left: 10px;
 	display: inline-block;
-	max-width: 150px; /* Ограничиваем ширину span, можно настроить по своему */
+	max-width: 150px;
+	/* Ограничиваем ширину span, можно настроить по своему */
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-  }
+}
+
 .upload-container {
 	position: relative;
 	width: fit-content;
@@ -149,7 +161,7 @@
 	margin-bottom: 5px;
 	border: none;
 	border-radius: 5px;
-    transition: 0.4s;
+	transition: 0.4s;
 	background: #573b8a;
 	color: #eee;
 }
@@ -159,15 +171,123 @@
 }
 
 .logout-btn:focus {
-    transform: scale(0.98);
+	transform: scale(0.98);
 }
 
-.loading, .error, .no-images {
+.loading,
+.error,
+.no-images {
 	color: #eee;
 	margin-top: 20px;
 	font-size: 25px;
 	letter-spacing: 1px;
 }
+
+.loading-container {
+	width: 100%;
+	height: 100%;
+	margin-top: 35vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.loading {
+	margin-top: 140px;
+}
+
+.spinner-container {
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+}
+
+.spinner {
+	position: absolute;
+	width: 11.5px;
+	height: 11.5px;
+ }
+ 
+ .spinner div {
+	position: absolute;
+	width: 50%;
+	height: 150%;
+	background: #5d05e6;
+	transform: rotate(calc(var(--rotation) * 1deg)) translate(0, calc(var(--translation) * 1%));
+	animation: spinner-fzua35 1s calc(var(--delay) * 1s) infinite ease;
+ }
+ 
+ .spinner div:nth-child(1) {
+	--delay: 0.1;
+	--rotation: 36;
+	--translation: 150;
+ }
+ 
+ .spinner div:nth-child(2) {
+	--delay: 0.2;
+	--rotation: 72;
+	--translation: 150;
+ }
+ 
+ .spinner div:nth-child(3) {
+	--delay: 0.3;
+	--rotation: 108;
+	--translation: 150;
+ }
+ 
+ .spinner div:nth-child(4) {
+	--delay: 0.4;
+	--rotation: 144;
+	--translation: 150;
+ }
+ 
+ .spinner div:nth-child(5) {
+	--delay: 0.5;
+	--rotation: 180;
+	--translation: 150;
+ }
+ 
+ .spinner div:nth-child(6) {
+	--delay: 0.6;
+	--rotation: 216;
+	--translation: 150;
+ }
+ 
+ .spinner div:nth-child(7) {
+	--delay: 0.7;
+	--rotation: 252;
+	--translation: 150;
+ }
+ 
+ .spinner div:nth-child(8) {
+	--delay: 0.8;
+	--rotation: 288;
+	--translation: 150;
+ }
+ 
+ .spinner div:nth-child(9) {
+	--delay: 0.9;
+	--rotation: 324;
+	--translation: 150;
+ }
+ 
+ .spinner div:nth-child(10) {
+	--delay: 1;
+	--rotation: 360;
+	--translation: 150;
+ }
+ 
+ @keyframes spinner-fzua35 {
+	0%, 10%, 20%, 30%, 50%, 60%, 70%, 80%, 90%, 100% {
+	   transform: rotate(calc(var(--rotation) * 1deg)) translate(0, calc(var(--translation) * 1%));
+	}
+ 
+	50% {
+	   transform: rotate(calc(var(--rotation) * 1deg)) translate(0, calc(var(--translation) * 1.5%));
+	}
+ }
 
 .images-container {
 	width: 100%;
@@ -185,11 +305,13 @@
 
 }
 
-.images-table th, tr {
+.images-table th,
+tr {
 	margin: 0;
 }
 
-th, td {
+th,
+td {
 	padding: 5px;
 	outline: 1px solid #eee;
 	outline-color: #eee;
@@ -201,12 +323,13 @@ th, td {
 	width: 100%;
 	height: fit-content;
 	display: flex;
-	justify-content:space-between;
+	justify-content: space-between;
 	align-items: center;
 	border: 1px solid #eee;
 }
 
-.image-name, .image-status {
+.image-name,
+.image-status {
 	margin: 10px;
 	font-size: 20px;
 }
@@ -215,7 +338,13 @@ th, td {
 	padding: 0px;
 }
 
-.resumbit-btn, .del-btn, .download-btn, .view-btn, .reject-btn, .sign-btn, .accept-btn {
+.resumbit-btn,
+.del-btn,
+.download-btn,
+.view-btn,
+.reject-btn,
+.sign-btn,
+.accept-btn {
 	width: 100%;
 	height: 100%;
 	margin: 0px;
@@ -227,13 +356,75 @@ th, td {
 	cursor: pointer;
 }
 
-.del-btn, .download-btn, .view-btn, .reject-btn, .sign-btn, .accept-btn {
+.del-btn,
+.download-btn,
+.view-btn,
+.reject-btn,
+.sign-btn,
+.accept-btn {
 	width: fit-content;
 	height: fit-content;
 	margin: 3px;
 	padding: 7px;
 }
 
-.resumbit-btn:hover, .del-btn:hover, .download-btn:hover, .view-btn:hover, .reject-btn:hover, .sign-btn:hover, .accept-btn:hover {
+.resumbit-btn:hover,
+.del-btn:hover,
+.download-btn:hover,
+.view-btn:hover,
+.reject-btn:hover,
+.sign-btn:hover,
+.accept-btn:hover {
 	background: #763fdc;
+}
+
+.modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.8);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+
+.modal-content {
+	position: relative;
+	background: #1f175c;
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-top: 25px;
+	padding-bottom: 25px;
+	border-radius: 10px;
+	text-align: center;
+}
+
+.modal-image {
+	max-width: 100%;
+	max-height: 80vh;
+}
+
+.close-btn {
+	position: absolute;
+	top: 0;
+	right: 0;
+	background: url("../img/close.svg") center no-repeat;
+	color: white;
+	border: none;
+	border-radius: 50%;
+	width: 30px;
+	height: 30px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	transition: 0.4s;
+	transform: scale(1);
+}
+
+.close-btn:active {
+	transform: scale(0.9);
 }

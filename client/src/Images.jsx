@@ -6,6 +6,7 @@ const Images = () => {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [modalImage, setModalImage] = useState(null);
   const role = localStorage.getItem('role');
 
   const getDigestAuthorizationHeader = async (method, uri) => {
@@ -50,9 +51,17 @@ const Images = () => {
           'Authorization': authorizationHeader,
         },
       });
-      debugger;
+
       if (!response.ok) {
-        return;
+        if (response.status === 404) {
+          setImages([]);
+        }
+        return (
+          <div>
+            <button className="reload-btn" onClick={() => fetchImages()}></button>
+            <div className="no-images">No images found</div>
+          </div>
+        );
       }
 
       const data = await response.json();
@@ -75,7 +84,7 @@ const Images = () => {
       case 'Support':
         return '/Support/get-support-images';
       case 'Admin':
-        return '/Administrator/get-admin-images';
+        return '/Admin/get-admin-images';
       default:
         throw new Error('Invalid role');
     }
@@ -145,7 +154,8 @@ const Images = () => {
 
   const handleSignImage = async (id) => {
     try {
-      const uri = `/Administrator/sign/${id}`;
+      setLoading(true);
+      const uri = `/Admin/sign/${id}`;
       const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
 
       const response = await fetch(`${config.apiBaseUrl}${uri}`, {
@@ -163,12 +173,17 @@ const Images = () => {
       fetchImages();
     } catch (err) {
       setError(err.message);
+    } finally {
+      debugger
+      fetchImages();
+      setLoading(false);
     }
   };
 
   const handleRejectImage = async (id) => {
     try {
-      const uri = `/Administrator/reject-signing/${id}`;
+      setLoading(true);
+      const uri = `/Admin/reject-signing/${id}`;
       const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
 
       const response = await fetch(`${config.apiBaseUrl}${uri}`, {
@@ -186,11 +201,16 @@ const Images = () => {
       fetchImages();
     } catch (err) {
       setError(err.message);
+    } finally {
+      fetchImages();
+      setLoading(false);
     }
   };
 
   const handleAcceptImage = async (id) => {
     try {
+      setLoading(true);
+
       const uri = `/Support/request-signature/${id}`;
       const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
 
@@ -209,6 +229,10 @@ const Images = () => {
       fetchImages();
     } catch (err) {
       setError(err.message);
+    }
+    finally {
+      fetchImages();
+      setLoading(false);
     }
   };
 
@@ -235,21 +259,85 @@ const Images = () => {
     }
   };
 
+  const handleViewImage = async (id) => {
+    try {
+      setLoading(true);
+      const uri = `/${role}/view-image/${id}`;
+      const authorizationHeader = await getDigestAuthorizationHeader('GET', uri);
+      console.log(`${config.apiBaseUrl}${uri}`);
+
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': authorizationHeader,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      console.log(imageUrl);
+      setModalImage(imageUrl);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setModalImage(null);
+  };
+
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div className="loading-container">
+        <div className="spinner-container">
+          <div className="spinner">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+          <p className="loading">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error">Error occurred while loading data. Try later.</div>;
+    console.log(error);
+    debugger
+    return (
+      <div>
+        <button className="reload-btn" onClick={() => fetchImages()}></button>
+        <div className="error">Error occurred while loading data. Try later.</div>
+      </div>
+    );
   }
 
   if (images.length === 0) {
-    return <div className="no-images">No images found</div>;
+    return (
+      <div>
+        <button className="reload-btn" onClick={() => fetchImages()}></button>
+        <div className="no-images">No images found</div>
+      </div>
+    );
   }
 
   if (role === "Admin") {
     return (
       <div className="images-container">
+        <button className="reload-btn" onClick={() => fetchImages()}></button>
         <table className="images-table">
           <thead>
             <tr>
@@ -257,7 +345,6 @@ const Images = () => {
               <th>Status</th>
               <th>Sign</th>
               <th>Reject</th>
-              <th>Download</th>
               <th>View</th>
             </tr>
           </thead>
@@ -273,20 +360,26 @@ const Images = () => {
                   <button className="reject-btn" onClick={() => handleRejectImage(image.id)}>Reject</button>
                 </td>
                 <td>
-                  <button className="download-btn" onClick={() => handleDownloadImage(image.id)}>Download</button>
-                </td>
-                <td>
-                  <button className="view-btn" onClick={() => handleDownloadImage(image.id)}>View</button>
+                  <button className="view-btn" onClick={() => handleViewImage(image.id)}>View</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {modalImage && (
+          <div className="modal">
+            <div className="modal-content">
+              <button className="close-btn" onClick={closeModal}></button>
+              <img src={modalImage} alt="Viewed" className="modal-image" />
+            </div>
+          </div>
+        )}
       </div>
     );
   } else if (role === "Support") {
     return (
       <div className="images-container">
+        <button className="reload-btn" onClick={() => fetchImages()}></button>
         <table className="images-table">
           <thead>
             <tr>
@@ -294,7 +387,6 @@ const Images = () => {
               <th>Status</th>
               <th>Accept</th>
               <th>Reject</th>
-              <th>Download</th>
               <th>View</th>
             </tr>
           </thead>
@@ -310,21 +402,27 @@ const Images = () => {
                   <button className="reject-btn" onClick={() => handleSupportRejectImage(image.id)}>Reject</button>
                 </td>
                 <td>
-                  <button className="download-btn" onClick={() => handleDownloadImage(image.id)}>Download</button>
-                </td>
-                <td>
-                  <button className="view-btn" onClick={() => handleDownloadImage(image.id)}>View</button>
+                  <button className="view-btn" onClick={() => handleViewImage(image.id)}>View</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {modalImage && (
+          <div className="modal">
+            <div className="modal-content">
+              <button className="close-btn" onClick={closeModal}></button>
+              <img src={modalImage} alt="Viewed" className="modal-image" />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className="images-container">
+      <button className="reload-btn" onClick={() => fetchImages()}></button>
       <table className="images-table">
         <thead>
           <tr>
@@ -347,12 +445,20 @@ const Images = () => {
                 <button className="del-btn" onClick={() => handleDeleteImage(image.id)}>Delete</button>
               </td>
               <td>
-                <button className="view-btn" onClick={() => handleDownloadImage(image.id)}>View</button>
+                <button className="view-btn" onClick={() => handleViewImage(image.id)}>View</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {modalImage && (
+        <div className="modal">
+          <div className="modal-content">
+            <button className="close-btn" onClick={closeModal}></button>
+            <img src={modalImage} alt="Viewed" className="modal-image" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
