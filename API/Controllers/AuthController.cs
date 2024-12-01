@@ -45,6 +45,7 @@ namespace API.Controllers
         {
             if (await UserExists(regDto.Username)) return BadRequest("User with this name already exists.");
             if (await UserWithEmailExists(regDto.Email)) return BadRequest("User with this email already exists.");
+            if (regDto.Username.Length < 3) return BadRequest("Username must be more than 3 symbols.");
 
             var user = _mapper.Map<AppUser>(regDto);
             user.UserName = regDto.Username.ToLower();
@@ -197,6 +198,52 @@ namespace API.Controllers
             else return BadRequest("Failed to delete account: " + string.Join(", ", result.Errors.Select(e => e.Description)));
         }
 
+        [Authorize(AuthenticationSchemes = "Digest", Roles = "User,Admin,Support")]
+        [HttpPut("change-data")]
+        public async Task<ActionResult> EditUserData([FromBody] EditUserDataDto dataDto)
+        {
+            var user = await _userManager.FindByNameAsync(User.Identity.Name);
+
+            if (user == null) return Unauthorized("User not found");
+
+            if (string.IsNullOrWhiteSpace(dataDto.username) || string.IsNullOrWhiteSpace(dataDto.email)) return BadRequest("Username and Email cannot be empty.");
+
+            if (!IsValidEmail(dataDto.email)) return BadRequest("Invalid email format.");
+
+            var userWithSameEmail = await _userManager.FindByEmailAsync(dataDto.email);
+            if (userWithSameEmail != null && userWithSameEmail.Id != user.Id) return Conflict("Email is already in use.");
+
+            var userWithSameUsername = await _userManager.FindByNameAsync(dataDto.username);
+            if (userWithSameUsername != null && userWithSameUsername.Id != user.Id) return Conflict("Username is already in use.");
+
+            user.UserName = dataDto.username;
+            user.Email = dataDto.email;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded) return Ok("User data updated successfully.");
+
+            return BadRequest("Failed to update user data.");
+        }
+
+        [Authorize(AuthenticationSchemes = "Digest", Roles = "User,Admin,Support")]
+        [HttpGet("get-data")]
+        public async Task<ActionResult> GetUserData()
+        {
+            var user = await _userManager.FindByNameAsync(User.Identity.Name);
+
+            if (user == null) return Unauthorized("User not found");
+
+            var result = new UserDto
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                Email = user.Email
+            };
+
+            return Ok(result);
+        }
+
         [AllowAnonymous]
         [HttpOptions("Login")]
         public IActionResult Options()
@@ -205,6 +252,12 @@ namespace API.Controllers
             Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
             Response.Headers.Add("Access-Control-Allow-Headers", "X-Requested-With, Content-Type");
             return Ok();
+        }
+
+        private bool IsValidEmail(string email)
+        {
+            var emailRegex = new System.Text.RegularExpressions.Regex(@"^[^\s@]+@[^\s@]+\.[^\s@]+$");
+            return emailRegex.IsMatch(email);
         }
 
         private async Task<bool> UserExists(string username)

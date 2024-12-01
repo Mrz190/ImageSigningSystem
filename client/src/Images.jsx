@@ -315,7 +315,6 @@ const Images = () => {
 
   if (error) {
     console.log(error);
-    debugger
     return (
       <div>
         <button className="reload-btn" onClick={() => fetchImages()}></button>
@@ -341,7 +340,6 @@ const Images = () => {
           <thead>
             <tr>
               <th>Name</th>
-              <th>Status</th>
               <th>Uploaded by</th>
               <th>Sign</th>
               <th>Reject</th>
@@ -352,7 +350,6 @@ const Images = () => {
             {images.map((image) => (
               <tr key={image.id}>
                 <td>{image.imageName ? (image.imageName.length > 15 ? `${image.imageName.substring(0, 15)}...` : image.imageName) : "No Name"}</td>
-                <td>{image.status}</td>
                 <td>{image.userName}</td>
                 <td>
                   <button className="sign-btn" onClick={() => handleSignImage(image.id)}>Sign</button>

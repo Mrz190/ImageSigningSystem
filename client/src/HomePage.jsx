@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import Images from './Images';
 import CryptoJS from 'crypto-js';
+import Images from './Images';
 import config from './config';
 import "./styles/home-styles.css";
 
@@ -12,8 +12,10 @@ const HomePage = () => {
   const [refreshImages, setRefreshImages] = useState(false);
   const [isUserRole, setIsUserRole] = useState(false);
   const [isAdminRole, setIsAdminRole] = useState(false);
-  const [showResumeModal, setShowResumeModal] = useState(false); // Для модалки с подтверждением
-  const [isForceUpload, setIsForceUpload] = useState(false); // Для выполнения force-upload
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [showChangeDataModal, setShowChangeDataModal] = useState(false);
+  const [changeData, setChangeData] = useState({ username: '', email: '' });
+  const [isForceUpload, setIsForceUpload] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,7 +41,7 @@ const HomePage = () => {
   };
 
   const handleRedirectToRootPage = () => {
-    navigate("/", {replace: true});
+    navigate("/", { replace: true });
   };
 
   const handleSubmit = async (event) => {
@@ -162,7 +164,7 @@ const HomePage = () => {
     } catch (err) {
       setError(err.message);
       setLoading(false);
-    }finally{
+    } finally {
       setLoading(false);
     }
   };
@@ -176,6 +178,123 @@ const HomePage = () => {
 
   const handleNavigateToUsers = () => {
     navigate("/users");
+  };
+
+  const handleChangeData = async (event) => {
+    event.preventDefault();
+  
+    const { username, email } = changeData;
+  
+    if (!username || !email) {
+      alert("Please fill in both username and email.");
+      return;
+    }
+  
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+  
+    setLoading(true);
+  
+    try {
+      const userPasswordHash = localStorage.getItem("userPasswordHash");
+      const local_realm = localStorage.getItem("realm");
+      const local_username = localStorage.getItem("username");
+  
+      const local_HA1 = userPasswordHash;
+      const uri = "/Account/change-data";
+  
+      const nonceResponse = await fetch(`${config.apiBaseUrl}/Account/LoginNonce`, {
+        method: "GET",
+      });
+  
+      if (!nonceResponse.ok) {
+        throw new Error("Failed to fetch nonce");
+      }
+  
+      const nonceData = await nonceResponse.json();
+      const nonce = nonceData.nonce;
+  
+      const qop = "auth";
+      const nc = "00000001";
+      const cnonce = CryptoJS.lib.WordArray.random(4).toString(CryptoJS.enc.Hex);
+  
+      const digest = calculateDigest(local_HA1, nonce, uri, "PUT", qop, nc, cnonce);
+  
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Digest username="${local_username}", realm="${local_realm}", nonce="${nonce}", uri="${uri}", algorithm="MD5", qop=${qop}, nc=${nc}, cnonce="${cnonce}", response="${digest}"`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, email }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to change data");
+      }
+  
+      alert("Data updated successfully!");
+      setShowChangeDataModal(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserData = async () => {
+    setLoading(true);
+    try {
+      const userPasswordHash = localStorage.getItem("userPasswordHash");
+      const local_realm = localStorage.getItem("realm");
+      const local_username = localStorage.getItem("username");
+
+      const local_HA1 = userPasswordHash;
+      const uri = "/Account/get-data";
+
+      const nonceResponse = await fetch(`${config.apiBaseUrl}/Account/LoginNonce`, {
+        method: "GET",
+      });
+
+      if (!nonceResponse.ok) {
+        throw new Error("Failed to fetch nonce");
+      }
+
+      const nonceData = await nonceResponse.json();
+      const nonce = nonceData.nonce;
+
+      const qop = "auth";
+      const nc = "00000001";
+      const cnonce = CryptoJS.lib.WordArray.random(4).toString(CryptoJS.enc.Hex);
+
+      const digest = calculateDigest(local_HA1, nonce, uri, "GET", qop, nc, cnonce);
+
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Digest username="${local_username}", realm="${local_realm}", nonce="${nonce}", uri="${uri}", algorithm="MD5", qop=${qop}, nc=${nc}, cnonce="${cnonce}", response="${digest}"`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user data");
+      }
+
+      const data = await response.json();
+      setChangeData({ username: data.userName, email: data.email });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openChangeDataModal = async () => {
+    await fetchUserData();
+    setShowChangeDataModal(true);
   };
 
   return (
@@ -216,6 +335,10 @@ const HomePage = () => {
           </button>
         )}
 
+        <button className="edit-btn" onClick={openChangeDataModal}>
+          Change Username/Email
+        </button>
+
         <div className="images-container">
           {loading ? (
             <div className="loading-container">
@@ -243,7 +366,37 @@ const HomePage = () => {
 
       {error && <div className="error">{error}</div>}
 
-      {/* Модалка для подтверждения загрузки */}
+      {/* Modal for Changing User Data */}
+      {showChangeDataModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <form onSubmit={handleChangeData}>
+              <label className="label-form" htmlFor="username">Username</label>
+              <input className="reglog-input edit-input"
+                type="text"
+                id="username"
+                value={changeData.username}
+                onChange={(e) => setChangeData({ ...changeData, username: e.target.value })}
+              />
+              <label className="label-form" htmlFor="email">Email</label>
+              <input className="reglog-input edit-input"
+                type="email"
+                id="email"
+                value={changeData.email}
+                onChange={(e) => setChangeData({ ...changeData, email: e.target.value })}
+              />
+              <button type="submit" className="send-btn" disabled={loading}>
+                {loading ? "Saving..." : "Submit"}
+              </button>
+              <br/>
+              <button type="button" className="send-btn" onClick={() => setShowChangeDataModal(false)}>
+                Close
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showResumeModal && (
         <div className="modal">
           <div className="modal-content">

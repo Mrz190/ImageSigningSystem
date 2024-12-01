@@ -83,6 +83,10 @@ const AuthForm = () => {
 
     const handleRegistrationSubmit = async (e) => {
         e.preventDefault();
+        if (document.querySelector('[name="username"]').value.length < 3) {
+            alert("The name must be 3 characters or more.");
+            return;
+        }
         try {
             const response = await fetch(`${config.apiBaseUrl}/Account/Registration`, {
                 method: "POST",

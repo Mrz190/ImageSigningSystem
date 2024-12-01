@@ -124,9 +124,6 @@
 }
 
 .redirect-btn {
-	position: absolute;
-	top: 0;
-	right: 0;
 	padding: 10px;
 	border: none;
 	cursor: pointer;
@@ -140,6 +137,22 @@
 	background: #362556;
 }
 
+.edit-btn {
+	position: absolute;
+	top: 10px;
+	right: 20px;
+	padding: 10px;
+	border: none;
+	cursor: pointer;
+	color: #eee;
+	background: #5759b6;
+	border-radius: 10px;
+	transition: 0.2s;
+}
+
+.edit-btn:hover {
+	background: #362556;
+}
 
 .chosen-image {
 	margin-left: 10px;
@@ -693,4 +706,26 @@ td {
 	position: relative;
 	padding-left: 50px;
 	padding-right: 50px;
+}
+
+.label-form {
+	margin: 0;
+	cursor: default;
+}
+
+.edit-input {
+	width: fit-content;
+	max-width: 300px;	
+}
+
+.send-btn {
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	border: none;
+	cursor: pointer;
+	background: #014287;
+	margin-bottom: 10px;
+	margin-top: 0;
 }

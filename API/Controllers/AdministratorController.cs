@@ -16,13 +16,15 @@ namespace API.Controllers
         private readonly DataContext _context;
         private readonly UserManager<AppUser> _userManager;
         private readonly RoleManager<AppRole> _roleManager;
+        private readonly MailService _mailService;
 
-        public AdministratorController(ImageService imageService, DataContext context, UserManager<AppUser> userManager, RoleManager<AppRole> roleManager)
+        public AdministratorController(ImageService imageService, DataContext context, UserManager<AppUser> userManager, RoleManager<AppRole> roleManager, MailService mailService)
         {
             _imageService = imageService;
             _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
+            _mailService = mailService;
         }
 
         [HttpGet("get-admin-images")]
@@ -43,7 +45,22 @@ namespace API.Controllers
 
             if (signatureOperationResult == false) return BadRequest("Error while signing image.");
 
-            return Ok("Image was signed, metadata was updated.");
+            var templateMessage = new Message
+            {
+                MessageBody = $"Hello, {image.UploadedBy}! <br/>Your image was signed by administration"
+            };
+
+            var user = await _userManager.FindByNameAsync(image.UploadedBy);
+
+            var templateMail = new MailRequest
+            {
+                MailMessage = templateMessage,
+                RecipientEmail = user.Email
+            };
+            
+            var notifyUser = await _mailService.SendMailAsync(templateMail);
+
+            return notifyUser ? Ok("Image was signed, metadata was updated.") : BadRequest("Image was signed but user was'nt notified.");
         }
 
         [HttpPost("reject-signing/{imageId}")]
@@ -105,7 +122,7 @@ namespace API.Controllers
         }
 
         [HttpGet("view-image/{imageId}")]
-        public async Task<IActionResult> ViewImage(int imageId)
+        public async Task<ActionResult> ViewImage(int imageId)
         {
             var image = await _imageService.GetImageById(imageId);
             if (image == null) return NotFound("Image not found.");
@@ -114,7 +131,7 @@ namespace API.Controllers
         }
 
         [HttpPost("change-role/{userId}")]
-        public async Task<IActionResult> ChangeUserRole(int userId, int roleType)
+        public async Task<ActionResult> ChangeUserRole(int userId, int roleType)
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
@@ -153,6 +170,13 @@ namespace API.Controllers
             }
 
             return Ok($"Role changed successfully to {newRole}.");
+        }
+
+        [HttpPost("send-email")]
+        public async Task<ActionResult> SendEmail(MailRequest mailRequest)
+        {
+            var message = await _mailService.SendMailAsync(mailRequest);
+            return message ? Ok() : BadRequest();
         }
     }
 }

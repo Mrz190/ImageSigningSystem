@@ -28,6 +28,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IDigestAuthenticationService, DigestAuthenticationService>();
 builder.Services.AddScoped<ImageService>();
+builder.Services.AddScoped<MailService>();
 builder.Services.AddScoped<MD5Hash>();
 
 // Configure Identity
