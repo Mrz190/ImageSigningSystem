@@ -101,6 +101,64 @@ namespace API.Controllers
                 await file.CopyToAsync(memoryStream);
                 var originalImageData = memoryStream.ToArray();
 
+                var signature = _imageService.ExtractSignatureFromPngMetadata(originalImageData);
+
+                if (signature != null)
+                {
+                    return StatusCode(202, "In your image we found signature. Do you want to resume signing image (previous signature will be deleted)?");
+                }
+
+                var fileFormat = _imageService.GetFileFormat(originalImageData);
+                if (fileFormat != "PNG")
+                    return BadRequest("Invalid file format. Only PNG files are allowed.");
+
+                byte[] strippedImageData = _imageService.RemoveMetadata(originalImageData);
+
+                var signedImage = new SignedImage
+                {
+                    ImageData = originalImageData,
+                    StrippedData = strippedImageData,
+                    Signature = null,
+                    UserId = userId,
+                    ImageName = fileName,
+                    Status = ImageStatus.AwaitingSignature.ToString(),
+                    UploadedBy = userName
+                };
+
+                var signImageChecker = await _imageService.UploadSendImageForSigningToSupport(signedImage);
+
+                if (signImageChecker != true)
+                    return BadRequest("Error while uploading image.");
+
+                return Ok("Image uploaded.");
+            }
+        }
+
+        [HttpPost("force-upload")]
+        public async Task<ActionResult> ForceImageUpload(IFormFile file)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("User not found.");
+
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (file == null || file.Length == 0)
+                return BadRequest("Image not provided.");
+
+            var fileName = Path.GetFileName(file.FileName);
+            var fileExtension = Path.GetExtension(fileName).ToLower();
+
+            if (fileExtension != ".png")
+                return BadRequest("Only PNG files are allowed.");
+
+            if (!file.ContentType.Equals("image/png", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Invalid file type. Only PNG images are supported.");
+
+            using (var memoryStream = new MemoryStream())
+            {
+                await file.CopyToAsync(memoryStream);
+                var originalImageData = memoryStream.ToArray();
+
                 var fileFormat = _imageService.GetFileFormat(originalImageData);
                 if (fileFormat != "PNG")
                     return BadRequest("Invalid file format. Only PNG files are allowed.");

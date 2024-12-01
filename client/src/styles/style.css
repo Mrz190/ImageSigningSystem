@@ -626,3 +626,55 @@ td {
 .go-home-auth-btnn:hover {
 	background: #3f1483;
 }
+
+.get-users-btn {
+	width: 30%;
+	height: fit-content;
+	padding: 15px;
+	border: none;
+	cursor: pointer;
+	margin: 5px;
+	background: #5417b5;
+	color: #eee;
+	transition: 0.2s;
+}
+
+.get-users-btn:disabled {
+    cursor: not-allowed;
+    background-color: #e0e0e0;
+}
+
+.active-tab {
+    background-color: #007BFF;
+    color: white;
+    border-color: #0056b3;
+}
+
+.get-users-btn:active:hover {
+	background: #3f1483;
+}
+
+.td-actions {
+	display: flex;
+	justify-content: space-around;
+}
+
+.change-role-btn {
+	padding: 5px;
+	margin-left: 5px;
+	background: #5d05e6;
+	color: #eee;
+	cursor: pointer;
+	border: 0;
+	transition: 0.2s;
+}
+
+.change-role-btn:hover {
+	background: #3f1483;
+}
+
+.back-btn {
+	position: relative;
+	padding-left: 50px;
+	padding-right: 50px;
+}

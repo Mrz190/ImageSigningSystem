@@ -194,7 +194,7 @@ const IndexPage = () => {
             className="submit-btn"
             disabled={isSubmitting || !image}
           >
-            {isSubmitting ? "On review..." : "Verify"}
+            {isSubmitting ? "On review..." : "Verify signature"}
           </button>
         </div>
       </form>

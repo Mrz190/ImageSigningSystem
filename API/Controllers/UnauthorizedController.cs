@@ -16,7 +16,7 @@ namespace API.Controllers
             _imageService = imageService;
         }
 
-        [HttpPost("check-metadata")]
+        [HttpPost("find-signature")]
         public async Task<ActionResult> CheckMetadata(IFormFile file)
         {
             if (file == null || file.Length == 0)
