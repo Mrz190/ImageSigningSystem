@@ -1,34 +1,38 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import AuthForm from "./AuthForm";
 import HomePage from "./HomePage";
 import IndexPage from "./IndexPage";
 
 function AppRouter() {
     const navigate = useNavigate();
-
-    const [isAuthenticated, setIsAuthenticated] = useState(false); 
+    const location = useLocation();
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
         const userPasswordHash = localStorage.getItem("userPasswordHash");
         if (userPasswordHash) {
             setIsAuthenticated(true);
-        } 
+        }
     }, []);
 
     useEffect(() => {
-        if (isAuthenticated) {
-            navigate("/home");
-        } else {
-            navigate("/auth", { replace: true });
+        if (location.pathname === "/"){
+            navigate("/", {replace: true});
         }
-    }, [isAuthenticated, navigate]); 
+        else if (isAuthenticated && location.pathname === "/auth") {
+            navigate("/home", { replace: true });
+        }
+        else if (!isAuthenticated && location.pathname !== "/auth") {
+            navigate("/", { replace: true });
+        }
+    }, [isAuthenticated, location.pathname, navigate]);
 
     return (
         <Routes>
+            <Route path="/" element={<IndexPage />} />
             <Route path="/home" element={<HomePage />} />
             <Route path="/auth" element={<AuthForm />} />
-            <Route path="/" element={<IndexPage />} />
         </Routes>
     );
 }

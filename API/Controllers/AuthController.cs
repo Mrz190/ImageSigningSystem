@@ -88,21 +88,17 @@ namespace API.Controllers
         [HttpPost("Login")]
         public async Task<ActionResult<UserDto>> Login(LogDto logDto)
         {
-            // Извлекаем Authorization заголовок из запроса
             var authorizationHeader = Request.Headers["Authorization"].ToString();
 
             if (string.IsNullOrEmpty(authorizationHeader) || !authorizationHeader.StartsWith("Digest "))
             {
-                // Если заголовок отсутствует или не является Digest, отправляем 401 ошибку
                 var nonce = _digestAuthenticationService.GenerateNonce();
                 Response.Headers["WWW-Authenticate"] = $"Digest realm=\"{_config["DigestRealm"]}\", qop=\"auth\", nonce=\"{nonce}\", opaque=\"\"";
                 return Unauthorized("Authorization header is missing or invalid.");
             }
 
-            // Парсим Digest заголовок
             var digestValues = ParseDigestHeader(authorizationHeader);
 
-            // Получаем пользователя из базы
             var username = digestValues["username"];
             var user = await _userManager.Users.SingleOrDefaultAsync(n => n.UserName == logDto.UserName);
 
@@ -113,7 +109,6 @@ namespace API.Controllers
                 return Unauthorized("Invalid username or password.");
             }
 
-            // Валидация Digest аутентификации
             if (!_digestAuthenticationService.ValidateDigest(digestValues, _digestAuthenticationService.GenerateNonce(), HttpContext))
             {
                 var nonce = _digestAuthenticationService.GenerateNonce();
@@ -130,36 +125,10 @@ namespace API.Controllers
             };
 
             return Ok(resultDto);
-
-
-
-
-
-
-
-
-
-
-
-            //var realm = _config.GetValue<string>("DigestRealm");
-            //var calculatedHash = _MD5.CalculateMd5Hash($"{logDto.UserName.ToLower()}:{realm}:{logDto.Password}");
-
-            //if (user.PasswordHash != calculatedHash)
-            //    return BadRequest("Invalid username or password.");
-
-            //var resultDto = new UserDto
-            //{
-            //    Id = user.Id,
-            //    UserName = user.UserName,
-            //    Email = user.Email
-            //};
-
-            //return Ok(resultDto);
         }
 
         private Dictionary<string, string> ParseDigestHeader(string authorizationHeader)
         {
-            // Логика парсинга Digest-заголовка
             var values = new Dictionary<string, string>();
             var digestData = authorizationHeader.Substring("Digest ".Length);
             var parts = digestData.Split(',');
@@ -176,13 +145,6 @@ namespace API.Controllers
             }
             return values;
         }
-
-
-
-
-
-
-
 
         [AllowAnonymous]
         [HttpGet("LoginNonce")]
@@ -201,9 +163,9 @@ namespace API.Controllers
         {
             using (var rng = new RNGCryptoServiceProvider())
             {
-                byte[] randomBytes = new byte[16]; // 16 байт для nonce
+                byte[] randomBytes = new byte[16];
                 rng.GetBytes(randomBytes);
-                return Convert.ToBase64String(randomBytes); // Возвращаем как base64 строку
+                return Convert.ToBase64String(randomBytes);
             }
         }
 

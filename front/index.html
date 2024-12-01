@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="global.css">
+    <link rel="stylesheet" type="text/css" href="media.css">
+    <link rel="stylesheet" type="text/css" href="reset.css">
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500&display=swap" rel="stylesheet">
+    <title>Document</title>
+</head>
+
+<body>
+    <div class="index-form">
+        <form action="" method="POST" enctype="multipart/form-data">
+            <label>Check your image for signature</label>
+            <div class="fileform-container">
+                <input type="file" id="actual-btn" hidden accept=".png"/>
+                <label class="file-label" for="actual-btn">Choose File</label>
+                <span id="file-chosen"></span>
+            </div>
+            <button type="submit" class="send-btn">Check image</button>
+        </form>
+    </div>
+
+    <script type="text/javascript">
+        const actualBtn = document.getElementById('actual-btn');
+        const fileChosen = document.getElementById('file-chosen');
+
+        actualBtn.addEventListener('change', function () {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                const fileType = file.type;
+
+                if (fileType === 'image/png') {
+                    fileChosen.textContent = file.name;
+                } else {
+                    fileChosen.textContent = 'Invalid file type. Please select a PNG file.';
+                    this.value = '';
+                }
+            } else {
+                fileChosen.textContent = 'No file chosen';
+            }
+        });
+    </script>
+</body>
+</html>

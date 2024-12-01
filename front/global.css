@@ -20,10 +20,6 @@ label{
 	transition: .4s ease-in-out;
 }
 
-p {
-	color: #eee;
-}
-
 .main {
 	width: 350px;
 	height: 500px;
@@ -75,7 +71,6 @@ p {
 }
 
 .fileform-container {
-	width: fit-content;
 	display: flex;
 	justify-content: center;
 	align-items: center;

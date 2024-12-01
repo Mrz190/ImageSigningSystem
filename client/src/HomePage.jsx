@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
 import Images from './Images';
 import CryptoJS from 'crypto-js';
 import config from './config';
@@ -8,6 +9,7 @@ const HomePage = () => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
   const [refreshImages, setRefreshImages] = useState(false);
   const [isUserRole, setIsUserRole] = useState(false);
 
@@ -30,6 +32,10 @@ const HomePage = () => {
     if (selectedFile) {
       setFile(selectedFile);
     }
+  };
+
+  const handleRedirectToRootPage = () => {
+    navigate("/", {replace: true});
   };
 
   const handleSubmit = async (event) => {
@@ -107,7 +113,7 @@ const HomePage = () => {
   return (
     <div>
       <button className="logout-btn" onClick={handleLogout}>
-        Logout
+        Logout &#8625;
       </button>
       <div className="global-container">
         {isUserRole && (
@@ -132,6 +138,7 @@ const HomePage = () => {
                 </button>
               </div>
             </form>
+            <button className="redirect-btn" onClick={() => handleRedirectToRootPage()}>Check signature</button>
           </div>
         )}
         <div className="images-container">

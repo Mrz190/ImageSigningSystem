@@ -342,6 +342,7 @@ const Images = () => {
             <tr>
               <th>Name</th>
               <th>Status</th>
+              <th>Uploaded by</th>
               <th>Sign</th>
               <th>Reject</th>
               <th>View</th>
@@ -352,6 +353,7 @@ const Images = () => {
               <tr key={image.id}>
                 <td>{image.imageName ? (image.imageName.length > 15 ? `${image.imageName.substring(0, 15)}...` : image.imageName) : "No Name"}</td>
                 <td>{image.status}</td>
+                <td>{image.userName}</td>
                 <td>
                   <button className="sign-btn" onClick={() => handleSignImage(image.id)}>Sign</button>
                 </td>
@@ -383,7 +385,7 @@ const Images = () => {
           <thead>
             <tr>
               <th>Name</th>
-              <th>Status</th>
+              <th>Uploaded by</th>
               <th>Accept</th>
               <th>Reject</th>
               <th>View</th>
@@ -393,7 +395,7 @@ const Images = () => {
             {images.map((image) => (
               <tr key={image.id}>
                 <td>{image.imageName ? (image.imageName.length > 15 ? `${image.imageName.substring(0, 15)}...` : image.imageName) : "No Name"}</td>
-                <td>{image.status}</td>
+                <td>{image.userName}</td>
                 <td>
                   <button className="accept-btn" onClick={() => handleAcceptImage(image.id)}>Accept</button>
                 </td>
