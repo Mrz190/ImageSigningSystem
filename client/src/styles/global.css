@@ -93,3 +93,9 @@ p {
 	position: relative;
 	padding: 10px;
 }
+
+.index-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}

@@ -46,7 +46,7 @@ const IndexPage = () => {
     fileInputRef.current.click();
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, action) => {
     e.preventDefault();
 
     if (!image) {
@@ -56,19 +56,31 @@ const IndexPage = () => {
 
     setIsSubmitting(true);
 
+    const uri = action === "verify" 
+      ? "/Unauthorized/verify-file-signature"
+      : "/Unauthorized/find-signature";
+
     try {
       const formData = new FormData();
       formData.append("file", fileInputRef.current.files[0]);
 
-      const response = await fetch(`${config.apiBaseUrl}/Unauthorized/verify-file-signature`, {
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
         method: "POST",
         body: formData,
       });
 
       if (response.ok) {
-        alert("Signature valid!");
+        if (action === "verify") {
+          alert("Signature valid!");
+        } else {
+          alert("Signature found!");
+        }
       } else {
-        alert("Signature invalid!");
+        if (action === "verify") {
+          alert("Signature invalid!");
+        } else {
+          alert("No signature found!");
+        }
       }
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -130,7 +142,7 @@ const IndexPage = () => {
   };
 
   return (
-    <div className="global-container">
+    <div className="global-container index-container">
       {isUserAuthenticated() ? (
         <button className="go-home-auth-btn" onClick={goToHome}>
           To home page &#8629;
@@ -193,8 +205,18 @@ const IndexPage = () => {
             type="submit"
             className="submit-btn"
             disabled={isSubmitting || !image}
+            onClick={(e) => handleSubmit(e, "verify")}
           >
             {isSubmitting ? "On review..." : "Verify signature"}
+          </button>
+          <br/>
+          <button
+            type="submit"
+            className="submit-btn"
+            disabled={isSubmitting || !image}
+            onClick={(e) => handleSubmit(e, "find")}
+          >
+            {isSubmitting ? "On review..." : "Find signature"}
           </button>
         </div>
       </form>

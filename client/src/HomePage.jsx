@@ -248,8 +248,8 @@ const HomePage = () => {
         <div className="modal">
           <div className="modal-content">
             <p>In your image we found signature. Do you want to resume signing image (previous signature will be deleted)?</p>
-            <button onClick={handleForceUpload}>Yes</button>
-            <button onClick={() => setShowResumeModal(false)}>No</button>
+            <button className="choose-btn" onClick={handleForceUpload}>Yes</button>
+            <button className="choose-btn" onClick={() => setShowResumeModal(false)}>No</button>
           </div>
         </div>
       )}
