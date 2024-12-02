@@ -47,9 +47,9 @@ namespace API.Controllers
 
             var templateMessage = new Message
             {
-                MessageBody = $"Hello, {image.UploadedBy}! <br/>Your image was signed by administration"
+                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>Your image was signed by administration</h4>"
             };
-
+                
             var user = await _userManager.FindByNameAsync(image.UploadedBy);
 
             var templateMail = new MailRequest
@@ -73,7 +73,22 @@ namespace API.Controllers
 
             if (rejectingResult == false) return BadRequest("Error while rejecting image.");
 
-            return Ok("Signing the image was rejected.");
+            var templateMessage = new Message
+            {
+                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>You've been denied an image signature</h4>"
+            };
+
+            var user = await _userManager.FindByNameAsync(image.UploadedBy);
+
+            var templateMail = new MailRequest
+            {
+                MailMessage = templateMessage,
+                RecipientEmail = user.Email
+            };
+
+            var notifyUser = await _mailService.SendMailAsync(templateMail);
+
+            return notifyUser ? Ok("Signing the image was rejected.") : BadRequest("Signing the image was rejected but user was not notified.");
         }
 
         [HttpGet("get-users")]

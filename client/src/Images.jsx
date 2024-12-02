@@ -197,7 +197,6 @@ const Images = () => {
         throw new Error('Failed to reject image');
       }
 
-      fetchImages();
     } catch (err) {
       setError(err.message);
     } finally {

@@ -2,6 +2,7 @@
 using API.Entity;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers
@@ -11,12 +12,16 @@ namespace API.Controllers
     public class SupportController : BaseApiController
     {
         private readonly ImageService _imageService;
+        private readonly UserManager<AppUser> _userManager;
+        private readonly MailService _mailService;
         private readonly DataContext _context;
 
-        public SupportController(ImageService imageService, DataContext context)
+        public SupportController(ImageService imageService, DataContext context, UserManager<AppUser> userManager, MailService mailService)
         {
             _imageService = imageService;
             _context = context;
+            _userManager = userManager;
+            _mailService = mailService;
         }
 
         [HttpGet("get-support-images")]
@@ -52,7 +57,22 @@ namespace API.Controllers
 
             if (rejectingResult == false) return BadRequest("Error while rejecting image.");
 
-            return Ok("Signing the image was rejected.");
+            var templateMessage = new Message
+            {
+                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>You've been denied an image signature</h4>"
+            };
+
+            var user = await _userManager.FindByNameAsync(image.UploadedBy);
+
+            var templateMail = new MailRequest
+            {
+                MailMessage = templateMessage,
+                RecipientEmail = user.Email
+            };
+
+            var notifyUser = await _mailService.SendMailAsync(templateMail);
+
+            return notifyUser ? Ok("Signing the image was rejected.") : BadRequest("Signing the image was rejected but user was not notified.");
         }
 
         [HttpGet("view-image/{imageId}")]
