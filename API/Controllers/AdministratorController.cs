@@ -1,6 +1,7 @@
 ﻿using API.Data;
 using API.Dto;
 using API.Entity;
+using API.Interfaces;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -16,9 +17,9 @@ namespace API.Controllers
         private readonly DataContext _context;
         private readonly UserManager<AppUser> _userManager;
         private readonly RoleManager<AppRole> _roleManager;
-        private readonly MailService _mailService;
+        private readonly IMailService _mailService;
 
-        public AdministratorController(ImageService imageService, DataContext context, UserManager<AppUser> userManager, RoleManager<AppRole> roleManager, MailService mailService)
+        public AdministratorController(ImageService imageService, DataContext context, UserManager<AppUser> userManager, RoleManager<AppRole> roleManager, IMailService mailService)
         {
             _imageService = imageService;
             _context = context;

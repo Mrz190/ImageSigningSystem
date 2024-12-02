@@ -1,5 +1,6 @@
 ﻿using API.Data;
 using API.Entity;
+using API.Interfaces;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,10 +14,10 @@ namespace API.Controllers
     {
         private readonly ImageService _imageService;
         private readonly UserManager<AppUser> _userManager;
-        private readonly MailService _mailService;
+        private readonly IMailService _mailService;
         private readonly DataContext _context;
 
-        public SupportController(ImageService imageService, DataContext context, UserManager<AppUser> userManager, MailService mailService)
+        public SupportController(ImageService imageService, DataContext context, UserManager<AppUser> userManager, IMailService mailService)
         {
             _imageService = imageService;
             _context = context;

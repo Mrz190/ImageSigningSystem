@@ -1,9 +1,10 @@
-﻿using System.Net;
+﻿using API.Interfaces;
+using System.Net;
 using System.Net.Mail;
 
 namespace API.Services
 {
-    public class MailService
+    public class MailService : IMailService
     {
         private const int MaxRetryAttempts = 3;
         private const int DelayMilliseconds = 2000;
