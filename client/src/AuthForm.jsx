@@ -61,16 +61,16 @@ const AuthForm = () => {
                 const data = await response.json();
 
                 const userPasswordHash = CryptoJS.MD5(`${loginData.userName}:${nonceData.realm}:${loginData.password}`).toString(CryptoJS.enc.Hex);
-                localStorage.setItem('userPasswordHash', userPasswordHash);
+                sessionStorage.setItem('userPasswordHash', userPasswordHash); // Используем sessionStorage
 
                 if (data.token) {
-                    localStorage.setItem('token', data.token);
+                    sessionStorage.setItem('token', data.token); // Используем sessionStorage
                 }
                 if (data.role) {
-                    localStorage.setItem('role', data.role);
+                    sessionStorage.setItem('role', data.role); // Используем sessionStorage
                 }
-                localStorage.setItem('realm', realm);
-                localStorage.setItem('username', username);
+                sessionStorage.setItem('realm', realm); // Используем sessionStorage
+                sessionStorage.setItem('username', username); // Используем sessionStorage
                 location.reload();
                 navigate("/home");
             } else {

@@ -18,10 +18,10 @@ const Users = () => {
         setLoading(true);
         setError(null);
         try {
-            const role = localStorage.getItem("role");
-            const userPasswordHash = localStorage.getItem("userPasswordHash");
-            const local_realm = localStorage.getItem("realm");
-            const local_username = localStorage.getItem("username");
+            const role = sessionStorage.getItem("role");
+            const userPasswordHash = sessionStorage.getItem("userPasswordHash");
+            const local_realm = sessionStorage.getItem("realm");
+            const local_username = sessionStorage.getItem("username");
 
             if (!role || !userPasswordHash || !local_username) {
                 throw new Error("User is not authenticated or role is missing");
@@ -104,9 +104,9 @@ const Users = () => {
 
             const roleType = roleMap[newRole] || 3;
 
-            const userPasswordHash = localStorage.getItem("userPasswordHash");
-            const local_realm = localStorage.getItem("realm");
-            const local_username = localStorage.getItem("username");
+            const userPasswordHash = sessionStorage.getItem("userPasswordHash");
+            const local_realm = sessionStorage.getItem("realm");
+            const local_username = sessionStorage.getItem("username");
 
             if (!userPasswordHash || !local_username) {
                 throw new Error("Missing authentication details");
@@ -208,7 +208,6 @@ const Users = () => {
             </div>
         );
     };
-
 
     return (
         <div className="global-container">

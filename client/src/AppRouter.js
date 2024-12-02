@@ -11,22 +11,21 @@ function AppRouter() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
-        const userPasswordHash = localStorage.getItem("userPasswordHash");
+        const userPasswordHash = sessionStorage.getItem("userPasswordHash");
         if (userPasswordHash) {
             setIsAuthenticated(true);
         }
     }, []);
 
     useEffect(() => {
-        
         if (isAuthenticated && location.pathname === "/auth") {
             navigate("/home", { replace: true });
         }
         else if (!isAuthenticated && location.pathname !== "/auth") {
             navigate("/", { replace: true });
         }
-        else if (location.pathname === "/"){
-            navigate("/", {replace: true});
+        else if (location.pathname === "/") {
+            navigate("/", { replace: true });
         }
     }, [isAuthenticated, location.pathname, navigate]);
 

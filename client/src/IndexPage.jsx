@@ -138,7 +138,7 @@ const IndexPage = () => {
   };
 
   const isUserAuthenticated = () => {
-    return localStorage.getItem("realm") && localStorage.getItem("username") && localStorage.getItem("role");
+    return sessionStorage.getItem("realm") && sessionStorage.getItem("username") && sessionStorage.getItem("role");
   };
 
   return (

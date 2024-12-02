@@ -7,12 +7,12 @@ const Images = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [modalImage, setModalImage] = useState(null);
-  const role = localStorage.getItem('role');
+  const role = sessionStorage.getItem('role');
 
   const getDigestAuthorizationHeader = async (method, uri) => {
-    const local_HA1 = localStorage.getItem('userPasswordHash');
-    const local_realm = localStorage.getItem('realm');
-    const local_username = localStorage.getItem('username');
+    const local_HA1 = sessionStorage.getItem('userPasswordHash');
+    const local_realm = sessionStorage.getItem('realm');
+    const local_username = sessionStorage.getItem('username');
 
     if (!role || !local_HA1) {
       throw new Error('User is not authenticated or role is missing');
@@ -35,6 +35,19 @@ const Images = () => {
     const response = CryptoJS.MD5(local_HA1 + ":" + nonce + ":" + nc + ":" + cnonce + ":" + qop + ":" + HA2).toString(CryptoJS.enc.Hex);
 
     return `Digest username="${local_username}", realm="${local_realm}", nonce="${nonce}", uri="${uri}", algorithm="MD5", qop=${qop}, nc=${nc}, cnonce="${cnonce}", response="${response}"`;
+  };
+
+  const getUriForRole = (role) => {
+    switch (role) {
+      case 'User':
+        return '/User/get-user-images';
+      case 'Support':
+        return '/Support/get-support-images';
+      case 'Admin':
+        return '/Admin/get-admin-images';
+      default:
+        throw new Error('Invalid role');
+    }
   };
 
   const fetchImages = async () => {
@@ -76,19 +89,6 @@ const Images = () => {
   useEffect(() => {
     fetchImages();
   }, []);
-
-  const getUriForRole = (role) => {
-    switch (role) {
-      case 'User':
-        return '/User/get-user-images';
-      case 'Support':
-        return '/Support/get-support-images';
-      case 'Admin':
-        return '/Admin/get-admin-images';
-      default:
-        throw new Error('Invalid role');
-    }
-  };
 
   const handleDownloadImage = async (id) => {
     try {
@@ -152,117 +152,11 @@ const Images = () => {
     }
   };
 
-  const handleSignImage = async (id) => {
-    try {
-      setLoading(true);
-      const uri = `/Admin/sign/${id}`;
-      const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
-
-      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': authorizationHeader,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to sign image');
-      }
-
-      fetchImages();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      fetchImages();
-      setLoading(false);
-    }
-  };
-
-  const handleRejectImage = async (id) => {
-    try {
-      setLoading(true);
-      const uri = `/Admin/reject-signing/${id}`;
-      const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
-
-      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': authorizationHeader,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reject image');
-      }
-
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      fetchImages();
-      setLoading(false);
-    }
-  };
-
-  const handleAcceptImage = async (id) => {
-    try {
-      setLoading(true);
-
-      const uri = `/Support/request-signature/${id}`;
-      const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
-
-      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': authorizationHeader,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to accept image');
-      }
-
-      fetchImages();
-    } catch (err) {
-      setError(err.message);
-    }
-    finally {
-      fetchImages();
-      setLoading(false);
-    }
-  };
-
-  const handleSupportRejectImage = async (id) => {
-    try {
-      const uri = `/Support/reject-signing/${id}`;
-      const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
-
-      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': authorizationHeader,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reject image');
-      }
-
-      fetchImages();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   const handleViewImage = async (id) => {
     try {
       setLoading(true);
       const uri = `/${role}/view-image/${id}`;
       const authorizationHeader = await getDigestAuthorizationHeader('GET', uri);
-      console.log(`${config.apiBaseUrl}${uri}`);
 
       const response = await fetch(`${config.apiBaseUrl}${uri}`, {
         method: 'GET',
@@ -277,7 +171,6 @@ const Images = () => {
 
       const blob = await response.blob();
       const imageUrl = URL.createObjectURL(blob);
-      console.log(imageUrl);
       setModalImage(imageUrl);
     } catch (err) {
       setError(err.message);

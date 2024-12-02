@@ -48,7 +48,7 @@ builder.Services.AddIdentityServer()
     .AddInMemoryApiScopes(new List<ApiScope>()) // Empty list of API scopes
     .AddAspNetIdentity<AppUser>(); // Link IdentityServer with ASP.NET Identity
 
-builder.Services.AddAuthentication("Digest") // Устанавливаем Digest как стандартную схему
+builder.Services.AddAuthentication("Digest")
     .AddScheme<DigestAuthenticationOptions, DigestAuthenticationHandler>("Digest", options =>
     {
         options.Realm = builder.Configuration.GetValue<string>("DigestRealm");
