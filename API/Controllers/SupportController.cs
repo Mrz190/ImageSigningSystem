@@ -60,7 +60,7 @@ namespace API.Controllers
 
             var templateMessage = new Message
             {
-                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>You've been denied an image signature</h4>"
+                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>You've been denied an image signature for your image {image.ImageName}</h4>"
             };
 
             var user = await _userManager.FindByNameAsync(image.UploadedBy);

@@ -137,10 +137,25 @@
 	background: #362556;
 }
 
+.header-container {
+	display: flex;
+	width: 100%;
+	align-items: center;
+	justify-content: space-between;
+	padding-bottom: 10px;
+	padding-top: 10px;
+}
+
+.admin-btn-wrapper {
+	display: flex;
+}
+
+.admin-btn-wrapper::first-child {
+	margin-right: 10px;
+}
+
 .edit-btn {
-	position: absolute;
-	top: 10px;
-	right: 20px;
+	margin-left: 10px;
 	padding: 10px;
 	border: none;
 	cursor: pointer;
@@ -150,15 +165,23 @@
 	transition: 0.2s;
 }
 
+
 .edit-btn:hover {
 	background: #362556;
+}
+
+.edit-support-btn {
+	width: fit-content;
+	display: flex;
+	position: relative;
+	top: 0px;
+	right: 0px;
 }
 
 .chosen-image {
 	margin-left: 10px;
 	display: inline-block;
 	max-width: 150px;
-	/* Ограничиваем ширину span, можно настроить по своему */
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -190,14 +213,15 @@
 }
 
 .logout-btn {
-	width: 100%;
+	display: block;
+	width: fit-content;
+	padding: 10px;
 	height: fit-content;
 	padding-top: 5px;
 	letter-spacing: 1px;
 	font-size: 18px;
 	padding-bottom: 5px;
 	cursor: pointer;
-	margin-bottom: 5px;
 	border: none;
 	border-radius: 5px;
 	transition: 0.4s;

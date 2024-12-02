@@ -17,6 +17,7 @@ namespace API.Data
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
 
         public DbSet<SignedImage> SignedImages { get; set; }
+        public DbSet<EmailSettings> EmailSettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

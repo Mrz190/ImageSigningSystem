@@ -6,6 +6,8 @@ using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace API.Controllers
 {
@@ -17,15 +19,18 @@ namespace API.Controllers
         private readonly DataContext _context;
         private readonly UserManager<AppUser> _userManager;
         private readonly RoleManager<AppRole> _roleManager;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMailService _mailService;
 
-        public AdministratorController(ImageService imageService, DataContext context, UserManager<AppUser> userManager, RoleManager<AppRole> roleManager, IMailService mailService)
+        public AdministratorController(ImageService imageService, DataContext context, UserManager<AppUser> userManager, RoleManager<AppRole> roleManager, IMailService mailService, IUnitOfWork unitOfWork)
         {
             _imageService = imageService;
             _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
             _mailService = mailService;
+            _unitOfWork = unitOfWork;
+
         }
 
         [HttpGet("get-admin-images")]
@@ -48,7 +53,7 @@ namespace API.Controllers
 
             var templateMessage = new Message
             {
-                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>Your image was signed by administration</h4>"
+                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>Your image: '{image.ImageName}' was signed by administration. Now you can download it!</h4>"
             };
                 
             var user = await _userManager.FindByNameAsync(image.UploadedBy);
@@ -76,7 +81,7 @@ namespace API.Controllers
 
             var templateMessage = new Message
             {
-                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>You've been denied an image signature</h4>"
+                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>You've been denied an image signature for your image {image.ImageName}</h4>"
             };
 
             var user = await _userManager.FindByNameAsync(image.UploadedBy);
@@ -193,6 +198,33 @@ namespace API.Controllers
         {
             var message = await _mailService.SendMailAsync(mailRequest);
             return message ? Ok() : BadRequest();
+        }
+
+        [HttpPost("change-support-mail")]
+        public async Task<ActionResult> ChangeSupportMail([FromBody] SupportEmailDto emailDto)
+        {
+            var dbEmail = _context.EmailSettings.FirstOrDefault();
+            
+            if(dbEmail == null)
+            {
+                var email = new EmailSettings
+                {
+                    SupportEmail = emailDto.supportEmail
+                };
+                _context.EmailSettings.Add(email);
+            }
+            else dbEmail.SupportEmail = emailDto.supportEmail;
+
+            var changes = _unitOfWork.Context.ChangeTracker.Entries()
+           .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+           .ToList();
+
+            if (!changes.Any())
+                return StatusCode(500, "Internal server error.");
+
+            await _unitOfWork.CompleteAsync();
+
+            return Ok("Support email was changed.");
         }
     }
 }

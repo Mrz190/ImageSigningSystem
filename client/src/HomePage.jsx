@@ -17,6 +17,8 @@ const HomePage = () => {
   const [changeData, setChangeData] = useState({ username: '', email: '' });
   const [isForceUpload, setIsForceUpload] = useState(false);
   const navigate = useNavigate();
+  const [showChangeSupportEmailModal, setShowChangeSupportEmailModal] = useState(false);
+  const [supportEmail, setSupportEmail] = useState('');
 
   useEffect(() => {
     const role = localStorage.getItem("role");
@@ -182,47 +184,47 @@ const HomePage = () => {
 
   const handleChangeData = async (event) => {
     event.preventDefault();
-  
+
     const { username, email } = changeData;
-  
+
     if (!username || !email) {
       alert("Please fill in both username and email.");
       return;
     }
-  
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       alert("Please enter a valid email address.");
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
       const userPasswordHash = localStorage.getItem("userPasswordHash");
       const local_realm = localStorage.getItem("realm");
       const local_username = localStorage.getItem("username");
-  
+
       const local_HA1 = userPasswordHash;
       const uri = "/Account/change-data";
-  
+
       const nonceResponse = await fetch(`${config.apiBaseUrl}/Account/LoginNonce`, {
         method: "GET",
       });
-  
+
       if (!nonceResponse.ok) {
         throw new Error("Failed to fetch nonce");
       }
-  
+
       const nonceData = await nonceResponse.json();
       const nonce = nonceData.nonce;
-  
+
       const qop = "auth";
       const nc = "00000001";
       const cnonce = CryptoJS.lib.WordArray.random(4).toString(CryptoJS.enc.Hex);
-  
+
       const digest = calculateDigest(local_HA1, nonce, uri, "PUT", qop, nc, cnonce);
-  
+
       const response = await fetch(`${config.apiBaseUrl}${uri}`, {
         method: "PUT",
         headers: {
@@ -231,11 +233,11 @@ const HomePage = () => {
         },
         body: JSON.stringify({ username, email }),
       });
-  
+
       if (!response.ok) {
         throw new Error("Failed to change data");
       }
-  
+
       alert("Data updated successfully!");
       setShowChangeDataModal(false);
     } catch (err) {
@@ -244,6 +246,70 @@ const HomePage = () => {
       setLoading(false);
     }
   };
+
+  const handleChangeSupportEmail = async (event) => {
+    event.preventDefault();
+
+    if (!supportEmail) {
+      alert("Please enter a new support email address.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(supportEmail)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const userPasswordHash = localStorage.getItem("userPasswordHash");
+      const local_realm = localStorage.getItem("realm");
+      const local_username = localStorage.getItem("username");
+
+      const local_HA1 = userPasswordHash;
+      const uri = "/Admin/change-support-mail";
+
+      const nonceResponse = await fetch(`${config.apiBaseUrl}/Account/LoginNonce`, {
+        method: "GET",
+      });
+
+      if (!nonceResponse.ok) {
+        throw new Error("Failed to fetch nonce");
+      }
+
+      const nonceData = await nonceResponse.json();
+      const nonce = nonceData.nonce;
+
+      const qop = "auth";
+      const nc = "00000001";
+      const cnonce = CryptoJS.lib.WordArray.random(4).toString(CryptoJS.enc.Hex);
+
+      const digest = calculateDigest(local_HA1, nonce, uri, "POST", qop, nc, cnonce);
+
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Digest username="${local_username}", realm="${local_realm}", nonce="${nonce}", uri="${uri}", algorithm="MD5", qop=${qop}, nc=${nc}, cnonce="${cnonce}", response="${digest}"`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ supportEmail: supportEmail }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to change support email");
+      }
+
+      alert("Support email updated successfully!");
+      setShowChangeSupportEmailModal(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const fetchUserData = async () => {
     setLoading(true);
@@ -293,15 +359,35 @@ const HomePage = () => {
   };
 
   const openChangeDataModal = async () => {
-    await fetchUserData();
-    setShowChangeDataModal(true);
+    try {
+      await fetchUserData();
+      setShowChangeDataModal(true);
+    } catch (error) {
+      alert('Failed to load user data for modal');
+    }
+  };
+
+  const openChangeSupportEmailModal = () => {
+    setShowChangeSupportEmailModal(true);
   };
 
   return (
     <div>
-      <button className="logout-btn" onClick={handleLogout}>
-        Logout &#8625;
-      </button>
+      <div className="header-container">
+        {isAdminRole && (
+          <div className="admin-btn-wrapper">
+            <button className="edit-btn edit-support-btn" onClick={openChangeSupportEmailModal}>
+              Change Support Email
+            </button>
+            <button className="edit-btn" onClick={openChangeDataModal}>
+              Change Username/Email
+            </button>
+          </div>
+        )}
+        <button className="logout-btn" onClick={handleLogout}>
+          Logout &#8625;
+        </button>
+      </div>
       <div className="global-container">
         {isUserRole && (
           <div className="upload-container">
@@ -335,9 +421,29 @@ const HomePage = () => {
           </button>
         )}
 
-        <button className="edit-btn" onClick={openChangeDataModal}>
-          Change Username/Email
-        </button>
+        {showChangeSupportEmailModal && (
+          <div className="modal">
+            <div className="modal-content">
+              <form onSubmit={handleChangeSupportEmail}>
+                <label className="label-form" htmlFor="support-email">Support Email</label>
+                <input
+                  className="reglog-input edit-input"
+                  type="email"
+                  id="support-email"
+                  value={supportEmail}
+                  onChange={(e) => setSupportEmail(e.target.value)}
+                />
+                <button type="submit" className="send-btn" disabled={loading}>
+                  {loading ? "Saving..." : "Submit"}
+                </button>
+                <br />
+                <button type="button" className="send-btn" onClick={() => setShowChangeSupportEmailModal(false)}>
+                  Close
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         <div className="images-container">
           {loading ? (
@@ -366,7 +472,6 @@ const HomePage = () => {
 
       {error && <div className="error">{error}</div>}
 
-      {/* Modal for Changing User Data */}
       {showChangeDataModal && (
         <div className="modal">
           <div className="modal-content">
@@ -388,7 +493,7 @@ const HomePage = () => {
               <button type="submit" className="send-btn" disabled={loading}>
                 {loading ? "Saving..." : "Submit"}
               </button>
-              <br/>
+              <br />
               <button type="button" className="send-btn" onClick={() => setShowChangeDataModal(false)}>
                 Close
               </button>

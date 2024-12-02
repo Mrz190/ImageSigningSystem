@@ -9,6 +9,7 @@ namespace API.Mapping
         public BaseMapperProfile()
         {
             CreateMap<RegDto, AppUser>();
+            CreateMap<AppUser, UserDto>();
             CreateMap<ImageDto, SignedImage>().ReverseMap();
         }
     }
