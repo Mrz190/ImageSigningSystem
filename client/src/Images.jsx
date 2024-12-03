@@ -7,7 +7,15 @@ const Images = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [modalImage, setModalImage] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectComment, setRejectComment] = useState('');
+  const [rejectImageId, setRejectImageId] = useState(null);
   const role = sessionStorage.getItem('role');
+
+  const handleRejectImage = (id) => {
+    setRejectImageId(id);
+    setShowRejectModal(true);
+  };
 
   const getDigestAuthorizationHeader = async (method, uri) => {
     const local_HA1 = sessionStorage.getItem('userPasswordHash');
@@ -79,6 +87,91 @@ const Images = () => {
 
       const data = await response.json();
       setImages(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptImage = async (id) => {
+    try {
+      setLoading(true);
+      
+      const uri = `/Support/request-signature/${id}`;
+      const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
+  
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authorizationHeader,
+          'Content-Type': 'application/json',
+        },
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to accept image');
+      }
+  
+      setImages(images.filter((image) => image.id !== id));
+  
+
+
+      fetchImages(); 
+      alert("Request success.")
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const closeRejectModal = () => {
+    setShowRejectModal(false);
+    setRejectComment('');
+  };
+  const handleRejectSubmit = async () => {
+    debugger
+    try {
+      setLoading(true);
+      
+      if (!rejectComment.trim()) {
+        alert('Please enter a comment');
+        return;
+      }
+  
+      let uri = `/Support/reject-signing/${rejectImageId}`;
+      const role = sessionStorage.getItem("role");
+      console.log(typeof(role));
+      if(role == "Support") {
+        uri = `/Support/reject-signing/${rejectImageId}`;
+      }
+      else if(role == "Admin") {
+        uri = `/Admin/reject-signing/${rejectImageId}`;
+      }
+
+      const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
+  
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authorizationHeader,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          Comment: rejectComment,
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to reject image');
+      }
+      alert("Signing rejected.")
+  
+      setImages(images.filter((image) => image.id !== rejectImageId));
+      setShowRejectModal(false); 
+      setRejectComment('');
+      fetchImages();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -183,6 +276,37 @@ const Images = () => {
     setModalImage(null);
   };
 
+  const handleSignImage = async (id) => {
+    try {
+      setLoading(true);
+  
+      const uri = `/Admin/sign/${id}`;
+      const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
+  
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authorizationHeader,
+          'Content-Type': 'application/json',
+        },
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to sign image');
+      }
+  
+      setImages(images.filter((image) => image.id !== id));
+  
+      fetchImages();
+      alert("Image signed.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -256,6 +380,21 @@ const Images = () => {
             ))}
           </tbody>
         </table>
+        {showRejectModal && (
+          <div className="modal">
+            <div className="modal-content">
+              <button className="close-btn" onClick={closeRejectModal}></button>
+              <h2 className="comment-header">You may provide a comment for rejection</h2>
+              <textarea className="comment-area"
+                value={rejectComment}
+                onChange={(e) => setRejectComment(e.target.value)}
+                placeholder="Enter your comment here"
+              />
+              <button className="send-btn" onClick={handleRejectSubmit}>Confirm</button>
+              <button className="send-btn" onClick={closeRejectModal}>Cancel</button>
+            </div>
+          </div>
+        )}
         {modalImage && (
           <div className="modal">
             <div className="modal-content">
@@ -289,7 +428,7 @@ const Images = () => {
                   <button className="accept-btn" onClick={() => handleAcceptImage(image.id)}>Accept</button>
                 </td>
                 <td>
-                  <button className="reject-btn" onClick={() => handleSupportRejectImage(image.id)}>Reject</button>
+                  <button className="reject-btn" onClick={() => handleRejectImage(image.id)}>Reject</button>
                 </td>
                 <td>
                   <button className="view-btn" onClick={() => handleViewImage(image.id)}>View</button>
@@ -298,6 +437,21 @@ const Images = () => {
             ))}
           </tbody>
         </table>
+        {showRejectModal && (
+          <div className="modal">
+            <div className="modal-content">
+              <button className="close-btn" onClick={closeRejectModal}></button>
+              <h2 className="comment-header">You may provide a comment for rejection</h2>
+              <textarea className="comment-area"
+                value={rejectComment}
+                onChange={(e) => setRejectComment(e.target.value)}
+                placeholder="Enter your comment here"
+              />
+              <button className="send-btn" onClick={handleRejectSubmit}>Confirm</button>
+              <button className="send-btn" onClick={closeRejectModal}>Cancel</button>
+            </div>
+          </div>
+        )}
         {modalImage && (
           <div className="modal">
             <div className="modal-content">

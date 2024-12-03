@@ -24,6 +24,10 @@ p {
 	color: #eee;
 }
 
+textarea {
+	transition: 0.2s;
+}
+
 .main {
 	width: 350px;
 	height: 500px;

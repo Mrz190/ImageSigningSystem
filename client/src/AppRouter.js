@@ -8,26 +8,30 @@ import IndexPage from "./IndexPage";
 function AppRouter() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const userPasswordHash = sessionStorage.getItem("userPasswordHash");
+    const role = sessionStorage.getItem("role");
 
     useEffect(() => {
-        const userPasswordHash = sessionStorage.getItem("userPasswordHash");
-        if (userPasswordHash) {
-            setIsAuthenticated(true);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (isAuthenticated && location.pathname === "/auth") {
+        if (userPasswordHash && location.pathname === "/auth") {
             navigate("/home", { replace: true });
         }
-        else if (!isAuthenticated && location.pathname !== "/auth") {
-            navigate("/", { replace: true });
+        else if (!userPasswordHash && location.pathname === "/auth") {
+            navigate("/auth", { replace: true });
+        }
+        else if (userPasswordHash && location.pathname === "/home"){
+            navigate("/home", { replace: true });
         }
         else if (location.pathname === "/") {
             navigate("/", { replace: true });
         }
-    }, [isAuthenticated, location.pathname, navigate]);
+        else if (userPasswordHash && role === "Admin" && location.pathname === "/users"){
+            navigate("/users", { replace: true });
+
+        }
+        else if (userPasswordHash && location.pathname !== "/auth") {
+            navigate("/home", { replace: true });
+        }
+    }, [location.pathname, navigate]);
 
     return (
         <Routes>

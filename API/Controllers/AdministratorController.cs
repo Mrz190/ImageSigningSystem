@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace API.Controllers
 {
@@ -70,7 +69,7 @@ namespace API.Controllers
         }
 
         [HttpPost("reject-signing/{imageId}")]
-        public async Task<ActionResult> RejectSigingImage(int imageId)
+        public async Task<ActionResult> RejectSigingImage(int imageId, CommentDto commentDto)
         {
             var image = await _imageService.GetImageById(imageId);
             if (image == null) return NotFound("Image not found.");
@@ -79,10 +78,22 @@ namespace API.Controllers
 
             if (rejectingResult == false) return BadRequest("Error while rejecting image.");
 
-            var templateMessage = new Message
+            var templateMessage = new Message { };
+
+            if (commentDto.Comment.Length > 0)
             {
-                MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>You've been denied an image signature for your image {image.ImageName}</h4>"
-            };
+                templateMessage = new Message
+                {
+                    MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><p>You've been denied an image signature for your image {image.ImageName}</p><br/><h4>Comment:<br/>{commentDto.Comment}</h4>"
+                };
+            }
+            else
+            {
+                templateMessage = new Message
+                {
+                    MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><p>You've been denied an image signature for your image {image.ImageName}</p>"
+                };
+            }
 
             var user = await _userManager.FindByNameAsync(image.UploadedBy);
 
