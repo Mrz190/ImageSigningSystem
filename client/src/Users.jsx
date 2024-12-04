@@ -90,6 +90,55 @@ const Users = () => {
         }
     };
 
+    const handleRemoveUser = async (userId) => {
+        try {
+            const userPasswordHash = sessionStorage.getItem("userPasswordHash");
+            const local_realm = sessionStorage.getItem("realm");
+            const local_username = sessionStorage.getItem("username");
+
+            if (!userPasswordHash || !local_username) {
+                throw new Error("Missing authentication details");
+            }
+
+            const local_HA1 = userPasswordHash;
+            const qop = "auth";
+            const nc = "00000001";
+            const cnonce = CryptoJS.lib.WordArray.random(4).toString(CryptoJS.enc.Hex);
+            const uri = `/Admin/remove-user/${userId}`;
+
+            const nonceResponse = await fetch(`${config.apiBaseUrl}/Account/LoginNonce`, {
+                method: "GET",
+            });
+
+            if (!nonceResponse.ok) {
+                throw new Error("Failed to fetch nonce");
+            }
+
+            const nonceData = await nonceResponse.json();
+            const nonce = nonceData.nonce;
+
+            const digest = calculateDigest(local_HA1, nonce, uri, "DELETE", qop, nc, cnonce);
+
+            const response = await fetch(`${config.apiBaseUrl}/Admin/remove-user/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Digest username="${local_username}", realm="${local_realm}", nonce="${nonce}", uri="${uri}", algorithm="MD5", qop=${qop}, nc=${nc}, cnonce="${cnonce}", response="${digest}"`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to remove user');
+            }
+
+            alert("User removed successfully.");
+
+            fetchUsers(); // Refresh the user list after removal
+        } catch (error) {
+            alert(`Error: ${error.message}`);
+        }
+    };
+
+
     const calculateDigest = (_local_HA1, nonce, uri, method, qop, nc, cnonce) => {
         const HA1 = _local_HA1;
         const HA2 = CryptoJS.MD5(method + ":" + uri).toString(CryptoJS.enc.Hex);
@@ -198,6 +247,11 @@ const Users = () => {
                                         >
                                             Set as Support
                                         </button>
+                                        <button className="remove-user-btn"
+                                            onClick={() => handleRemoveUser(user.id)}
+                                        >
+                                            Remove User
+                                        </button>
                                     </td>
                                 </tr>
                             ))
@@ -211,6 +265,7 @@ const Users = () => {
             </div>
         );
     };
+    
 
     return (
         <div className="global-container">

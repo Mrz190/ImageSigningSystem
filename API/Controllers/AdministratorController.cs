@@ -54,7 +54,7 @@ namespace API.Controllers
             {
                 MessageBody = $"<h1>Hello, {image.UploadedBy} 👋!</h1><br/><h4>Your image: '{image.ImageName}' was signed by administration. Now you can download it!</h4>"
             };
-                
+
             var user = await _userManager.FindByNameAsync(image.UploadedBy);
 
             var templateMail = new MailRequest
@@ -62,7 +62,7 @@ namespace API.Controllers
                 MailMessage = templateMessage,
                 RecipientEmail = user.Email
             };
-            
+
             var notifyUser = await _mailService.SendMailAsync(templateMail);
 
             return notifyUser ? Ok("Image was signed, metadata was updated.") : BadRequest("Image was signed but user was'nt notified.");
@@ -215,8 +215,8 @@ namespace API.Controllers
         public async Task<ActionResult> ChangeSupportMail([FromBody] SupportEmailDto emailDto)
         {
             var dbEmail = _context.EmailSettings.FirstOrDefault();
-            
-            if(dbEmail == null)
+
+            if (dbEmail == null)
             {
                 var email = new EmailSettings
                 {
@@ -236,6 +236,47 @@ namespace API.Controllers
             await _unitOfWork.CompleteAsync();
 
             return Ok("Support email was changed.");
+        }
+
+        [HttpDelete("remove-user/{userId}")]
+        public async Task<ActionResult> RemoveUserAsync(int userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null) return NotFound("User not found");
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            if(roles.Contains("Admin")) return BadRequest("You can't delete admin.");
+
+            if(roles.Contains("User"))
+            {
+                var deletingImagesResult = await _imageService.DeleteAllUserImages(user.Id);
+                if (deletingImagesResult == false) return BadRequest("Error while deliting images.");
+            }
+
+            if (roles.Any()) await _userManager.RemoveFromRolesAsync(user, roles);
+
+            var result = await _userManager.DeleteAsync(user);
+
+            if (result.Succeeded)
+            {
+                var templateMessage = new Message
+                {
+                    Subject = "Account specifics",
+                    MessageBody = $"<h1>Hello, {user.UserName} 👋!</h1><br/><p>Your account was deleted from our platform.</p>"
+                };
+
+                var templateMail = new MailRequest
+                {
+                    MailMessage = templateMessage,
+                    RecipientEmail = user.Email
+                };
+
+                var notifyUser = await _mailService.SendMailAsync(templateMail);
+
+                return Ok("Account deleted.");
+            }
+            else return BadRequest("Failed to delete account: " + string.Join(", ", result.Errors.Select(e => e.Description)));
         }
     }
 }

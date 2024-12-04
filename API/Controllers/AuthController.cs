@@ -26,7 +26,6 @@ namespace API.Controllers
         private readonly MD5Hash _MD5;
         private readonly IDigestAuthenticationService _digestAuthenticationService;
         private readonly ImageService _imageService;
-
         public AuthController(UserManager<AppUser> userManager, IDigestAuthenticationService digestAuthenticationService, IHttpContextAccessor httpContextAccessor, IMapper mapper, DataContext context, IConfiguration config, MD5Hash _MD5, ImageService imageService)
         {
             _userManager = userManager;
@@ -151,7 +150,7 @@ namespace API.Controllers
         [HttpGet("LoginNonce")]
         public IActionResult GetLoginNonce()
         {
-            var nonce = _digestAuthenticationService.GenerateNonce(); // Генерация нового nonce
+            var nonce = _digestAuthenticationService.GenerateNonce();
             return Ok(new
             {
                 nonce = nonce,
@@ -170,7 +169,7 @@ namespace API.Controllers
             }
         }
 
-        [Authorize(AuthenticationSchemes = "Digest", Roles = "User")]
+        [Authorize(AuthenticationSchemes = "Digest", Roles = "User,Support,Admin")]
         [HttpDelete("delete-user/{userId}")]
         public async Task<ActionResult> DelUser(int userId, [FromBody] PasswordRequest password)
         {

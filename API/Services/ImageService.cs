@@ -10,10 +10,11 @@ using SixLabors.ImageSharp.Formats.Png;
 
 namespace API.Services
 {
-    public class ImageService
+    public class ImageService : IDisposable
     {
         private readonly string _privateKey;
         private readonly string _publicKey;
+        private bool disposedValue = false;
         private readonly DataContext _context;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
@@ -31,65 +32,7 @@ namespace API.Services
             _mapper = mapper;
         }
 
-        public async Task<List<ImageForAdminDto?>> GetAdminImages()
-        {
-            List<ImageForAdminDto> imageDtos;
-            var images = await _context.SignedImages
-               .Where(img => img.Status == ImageStatus.PendingAdminSignature.ToString())
-               .Select(img => new ImageForAdminDto
-               {
-                   Id = img.Id,
-                   ImageName = img.ImageName,
-                   Status = img.Status.ToString(),
-                   UserName = img.UploadedBy
-               })
-               .ToListAsync();
-
-            if (images != null && images.Count != 0)
-            {
-                return images;
-            }
-
-            return null;
-        }
-
-        public async Task<bool> RejectSigningImage(SignedImage image)
-        {
-            image.Status = ImageStatus.Rejected.ToString();
-
-            var changes = _unitOfWork.Context.ChangeTracker.Entries()
-            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
-            .ToList();
-
-            if (!changes.Any())
-                return false;
-
-            await _unitOfWork.CompleteAsync();
-
-            return true;
-        }
-
-        public async Task<List<ImageForSupportDto?>> GetSupportImages()
-        {
-            List<ImageForSupportDto> imageDtos;
-
-            var images = await _context.SignedImages
-               .Where(img => img.Status == ImageStatus.AwaitingSignature.ToString())
-               .Select(img => new ImageForSupportDto
-               {
-                   Id = img.Id,
-                   ImageName = img.ImageName,
-                   Status = img.Status.ToString(),
-                   UserName = img.UploadedBy
-               })
-               .ToListAsync();
-
-            if (images != null && images.Count != 0)
-            {
-                return images;
-            }
-            return null;
-        }
+        #region Signing Rejecting Image
 
         public async Task<bool> SignatureOperation(SignedImage image)
         {
@@ -116,146 +59,6 @@ namespace API.Services
             return true;
         }
 
-        public async Task<List<ImageDto?>> GetUserImages(int userId)
-        {
-            List<ImageDto> imageDtos;
-
-            var images = await _context.SignedImages
-               .Where(img => img.UserId == userId)
-               .Select(img => new ImageDto
-               {
-                   Id = img.Id,
-                   ImageName = img.ImageName,
-                   Status = img.Status.ToString()
-               })
-               .ToListAsync();
-
-            if (images != null && images.Count != 0)
-            {
-                return images;
-            }
-            return null;
-        }
-
-        public byte[] RemoveMetadata(byte[] fileBytes)
-        {
-            using var image = Image.Load(fileBytes);
-
-            var pngMetadata = image.Metadata.GetFormatMetadata(PngFormat.Instance);
-            if (pngMetadata != null)
-            {
-                pngMetadata.TextData.Clear(); // Remove text data
-            }
-
-            // Save image without metadata
-            using var memoryStream = new MemoryStream();
-            image.Save(memoryStream, new PngEncoder());
-            return memoryStream.ToArray();
-        }
-
-        public async Task<List<ImageDto?>> GetSignedImagesForUser(int userId)
-        {
-            List<ImageDto> imageDtos;
-
-            var images = await _context.SignedImages
-               .Where(img => img.UserId == userId && img.Status == ImageStatus.Signed.ToString())
-               .ToListAsync();
-
-            if (images != null && images.Count != 0)
-            {
-                imageDtos = images.Select(img => new ImageDto
-                {
-                    Id = img.Id,
-                    ImageName = img.ImageName,
-                    Status = img.Status.ToString()
-                }).ToList();
-                return imageDtos;
-            }
-            return null;
-        }
-
-        public async Task<List<ImageDto?>> GetRejectedImagesForUser(int userId)
-        {
-            List<ImageDto> imageDtos;
-
-            var images = await _context.SignedImages
-               .Where(img => img.UserId == userId && img.Status == ImageStatus.Rejected.ToString())
-               .ToListAsync();
-
-            if (images != null && images.Count != 0)
-            {
-                imageDtos = images.Select(img => new ImageDto
-                {
-                    Id = img.Id,
-                    ImageName = img.ImageName,
-                    Status = img.Status.ToString()
-                }).ToList();
-                return imageDtos;
-            }
-            return null;
-        }
-
-        public async Task<bool> UploadSendImageForSigningToSupport(SignedImage image)
-        {
-            _context.SignedImages.Add(image);
-
-            var changes = _unitOfWork.Context.ChangeTracker.Entries()
-            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
-            .ToList();
-
-            if (!changes.Any())
-                return false;
-
-            await _unitOfWork.CompleteAsync();
-
-            return true;
-        }
-
-        public async Task<SignedImage> GetImageById(int id)
-        {
-            var image = await _context.SignedImages.FindAsync(id);
-
-            return image;
-        }
-
-        public async Task<object> GetImagesDataBy(int id)
-        {
-            var image = await _context.SignedImages.Select(img => new { img.Id, img.ImageName, img.Status, img.UploadedBy }).FirstOrDefaultAsync();
-
-            return image;
-        }
-
-        // Extracting signature method
-        public string ExtractSignatureFromPngMetadata(byte[] fileBytes)
-        {
-            using var image = Image.Load(fileBytes);
-            
-            var pngMetadata = image.Metadata.GetFormatMetadata(PngFormat.Instance);
-
-            if (pngMetadata != null)
-            {
-                // Find field "Signature"
-                return pngMetadata.TextData
-                    .FirstOrDefault(t => t.Keyword.Equals("Signature", StringComparison.OrdinalIgnoreCase))
-                    .Value;
-            }
-
-            return string.Empty;
-        }
-
-        public async Task<byte[]> ConvertToByteArrayAsync(IFormFile file)
-        {
-            using var memoryStream = new MemoryStream();
-            await file.CopyToAsync(memoryStream);
-            return memoryStream.ToArray();
-        }
-
-        public string GetFileFormat(byte[] fileBytes)
-        {
-            using var image = Image.Load(fileBytes, out var format);
-            return format.Name.ToUpper();
-        }
-
         // Checking signature method
         public bool VerifySignature(byte[] imageData, string signature)
         {
@@ -276,6 +79,24 @@ namespace API.Services
                 Console.WriteLine($"Error: {ex.Message}");
                 return false;
             }
+        }
+
+        // Extracting signature method
+        public string ExtractSignatureFromPngMetadata(byte[] fileBytes)
+        {
+            using var image = Image.Load(fileBytes);
+
+            var pngMetadata = image.Metadata.GetFormatMetadata(PngFormat.Instance);
+
+            if (pngMetadata != null)
+            {
+                // Find field "Signature"
+                return pngMetadata.TextData
+                    .FirstOrDefault(t => t.Keyword.Equals("Signature", StringComparison.OrdinalIgnoreCase))
+                    .Value;
+            }
+
+            return string.Empty;
         }
 
         // Signing image with primary key method
@@ -357,6 +178,192 @@ namespace API.Services
             }
         }
 
+        public byte[] RemoveMetadata(byte[] fileBytes)
+        {
+            using var image = Image.Load(fileBytes);
+
+            var pngMetadata = image.Metadata.GetFormatMetadata(PngFormat.Instance);
+            if (pngMetadata != null)
+            {
+                pngMetadata.TextData.Clear(); // Remove text data
+            }
+
+            // Save image without metadata
+            using var memoryStream = new MemoryStream();
+            image.Save(memoryStream, new PngEncoder());
+            return memoryStream.ToArray();
+        }
+
+        public async Task<bool> RejectSigningImage(SignedImage image)
+        {
+            image.Status = ImageStatus.Rejected.ToString();
+
+            var changes = _unitOfWork.Context.ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+            .ToList();
+
+            if (!changes.Any())
+                return false;
+
+            await _unitOfWork.CompleteAsync();
+
+            return true;
+        }
+
+        public async Task<byte[]> ConvertToByteArrayAsync(IFormFile file)
+        {
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            return memoryStream.ToArray();
+        }
+
+        public string GetFileFormat(byte[] fileBytes)
+        {
+            using var image = Image.Load(fileBytes, out var format);
+            return format.Name.ToUpper();
+        }
+
+        #endregion
+
+        #region User Operations
+
+        public async Task<List<ImageForAdminDto?>> GetAdminImages()
+        {
+            List<ImageForAdminDto> imageDtos;
+            var images = await _context.SignedImages
+               .Where(img => img.Status == ImageStatus.PendingAdminSignature.ToString())
+               .Select(img => new ImageForAdminDto
+               {
+                   Id = img.Id,
+                   ImageName = img.ImageName,
+                   Status = img.Status.ToString(),
+                   UserName = img.UploadedBy
+               })
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                return images;
+            }
+
+            return null;
+        }
+
+        public async Task<List<ImageForSupportDto?>> GetSupportImages()
+        {
+            List<ImageForSupportDto> imageDtos;
+
+            var images = await _context.SignedImages
+               .Where(img => img.Status == ImageStatus.AwaitingSignature.ToString())
+               .Select(img => new ImageForSupportDto
+               {
+                   Id = img.Id,
+                   ImageName = img.ImageName,
+                   Status = img.Status.ToString(),
+                   UserName = img.UploadedBy
+               })
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                return images;
+            }
+            return null;
+        }
+
+        public async Task<List<ImageDto?>> GetUserImages(int userId)
+        {
+            List<ImageDto> imageDtos;
+
+            var images = await _context.SignedImages
+               .Where(img => img.UserId == userId)
+               .Select(img => new ImageDto
+               {
+                   Id = img.Id,
+                   ImageName = img.ImageName,
+                   Status = img.Status.ToString()
+               })
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                return images;
+            }
+            return null;
+        }
+
+        public async Task<List<ImageDto?>> GetSignedImagesForUser(int userId)
+        {
+            List<ImageDto> imageDtos;
+
+            var images = await _context.SignedImages
+               .Where(img => img.UserId == userId && img.Status == ImageStatus.Signed.ToString())
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                imageDtos = images.Select(img => new ImageDto
+                {
+                    Id = img.Id,
+                    ImageName = img.ImageName,
+                    Status = img.Status.ToString()
+                }).ToList();
+                return imageDtos;
+            }
+            return null;
+        }
+
+        public async Task<List<ImageDto?>> GetRejectedImagesForUser(int userId)
+        {
+            List<ImageDto> imageDtos;
+
+            var images = await _context.SignedImages
+               .Where(img => img.UserId == userId && img.Status == ImageStatus.Rejected.ToString())
+               .ToListAsync();
+
+            if (images != null && images.Count != 0)
+            {
+                imageDtos = images.Select(img => new ImageDto
+                {
+                    Id = img.Id,
+                    ImageName = img.ImageName,
+                    Status = img.Status.ToString()
+                }).ToList();
+                return imageDtos;
+            }
+            return null;
+        }
+
+        public async Task<bool> UploadSendImageForSigningToSupport(SignedImage image)
+        {
+            _context.SignedImages.Add(image);
+
+            var changes = _unitOfWork.Context.ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+            .ToList();
+
+            if (!changes.Any())
+                return false;
+
+            await _unitOfWork.CompleteAsync();
+
+            return true;
+        }
+
+        public async Task<SignedImage> GetImageById(int id)
+        {
+            var image = await _context.SignedImages.FindAsync(id);
+
+            return image;
+        }
+
+        public async Task<object> GetImagesDataBy(int id)
+        {
+            var image = await _context.SignedImages.Select(img => new { img.Id, img.ImageName, img.Status, img.UploadedBy }).FirstOrDefaultAsync();
+
+            return image;
+        }      
+        
         public async Task<bool> DeleteImage(SignedImage image)
         {
             _context.SignedImages.Remove(image);
@@ -418,5 +425,28 @@ namespace API.Services
                                         .Where(p => p.UserId == userId)
                                         .ToList();
         }
+
+        #endregion
+
+        #region IDisposable Support
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _unitOfWork?.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+        #endregion
     }
 }

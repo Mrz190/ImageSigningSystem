@@ -73,6 +73,9 @@ const AuthForm = () => {
                 }
                 sessionStorage.setItem('realm', realm);
                 sessionStorage.setItem('username', username);
+                if (data.id) {
+                    sessionStorage.setItem('userId', data.id);
+                }
                 location.reload();
                 navigate("/home");
             } else {

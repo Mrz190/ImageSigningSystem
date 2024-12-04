@@ -19,6 +19,8 @@ const HomePage = () => {
   const navigate = useNavigate();
   const [showChangeSupportEmailModal, setShowChangeSupportEmailModal] = useState(false);
   const [supportEmail, setSupportEmail] = useState('');
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState("");
 
   useEffect(() => {
     const role = sessionStorage.getItem("role");
@@ -35,13 +37,74 @@ const HomePage = () => {
     sessionStorage.removeItem("realm");
     sessionStorage.removeItem("username");
     sessionStorage.removeItem("role");
-    navigate("/auth", {replace: true});
+    navigate("/auth", { replace: true });
   };
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
+    }
+  };
+
+  const handleDeleteAccount = async (event) => {
+    event.preventDefault();
+
+    if (!deleteAccountPassword) {
+      alert("Please enter your password.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const userId = sessionStorage.getItem("userId");
+      const local_username = sessionStorage.getItem("username");
+      const local_realm = sessionStorage.getItem("realm");
+      const userPasswordHash = sessionStorage.getItem("userPasswordHash");
+
+      if (!userId || !local_username || !userPasswordHash) {
+        throw new Error("User session is invalid.");
+      }
+
+      const local_HA1 = userPasswordHash;
+      const uri = `/Account/delete-user/${userId}`;
+
+      const nonceResponse = await fetch(`${config.apiBaseUrl}/Account/LoginNonce`, { method: "GET" });
+
+      if (!nonceResponse.ok) {
+        throw new Error("Failed to fetch nonce");
+      }
+
+      const nonceData = await nonceResponse.json();
+      const nonce = nonceData.nonce;
+
+      const qop = "auth";
+      const nc = "00000001";
+      const cnonce = CryptoJS.lib.WordArray.random(4).toString(CryptoJS.enc.Hex);
+
+      const digest = calculateDigest(local_HA1, nonce, uri, "DELETE", qop, nc, cnonce);
+
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Digest username="${local_username}", realm="${local_realm}", nonce="${nonce}", uri="${uri}", algorithm="MD5", qop=${qop}, nc=${nc}, cnonce="${cnonce}", response="${digest}"`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: deleteAccountPassword }),
+      });
+
+      if (!response.ok) {
+        const serverMessage = await response.text();
+        throw new Error(serverMessage || "Failed to delete account");
+      }
+
+      alert("Account deleted successfully!");
+      handleLogout();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -187,47 +250,47 @@ const HomePage = () => {
 
   const handleChangeData = async (event) => {
     event.preventDefault();
-  
+
     const { username, email } = changeData;
-  
+
     if (!username || !email) {
       alert("Please fill in both username and email.");
       return;
     }
-  
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       alert("Please enter a valid email address.");
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
       const userPasswordHash = sessionStorage.getItem("userPasswordHash");
       const local_realm = sessionStorage.getItem("realm");
       const local_username = sessionStorage.getItem("username");
-  
+
       const local_HA1 = userPasswordHash;
       const uri = "/Account/change-data";
-  
+
       const nonceResponse = await fetch(`${config.apiBaseUrl}/Account/LoginNonce`, {
         method: "GET",
       });
-  
+
       if (!nonceResponse.ok) {
         throw new Error("Failed to fetch nonce");
       }
-  
+
       const nonceData = await nonceResponse.json();
       const nonce = nonceData.nonce;
-  
+
       const qop = "auth";
       const nc = "00000001";
       const cnonce = CryptoJS.lib.WordArray.random(4).toString(CryptoJS.enc.Hex);
-  
+
       const digest = calculateDigest(local_HA1, nonce, uri, "PUT", qop, nc, cnonce);
-  
+
       const response = await fetch(`${config.apiBaseUrl}${uri}`, {
         method: "PUT",
         headers: {
@@ -236,12 +299,12 @@ const HomePage = () => {
         },
         body: JSON.stringify({ username, email }),
       });
-  
+
       if (!response.ok) {
         const serverMessage = await response.text();
         throw new Error(serverMessage || "Failed to change data");
       }
-  
+
       alert("Data updated successfully!");
       setShowChangeDataModal(false);
     } catch (err) {
@@ -250,7 +313,7 @@ const HomePage = () => {
       setLoading(false);
     }
   };
-  
+
 
   const handleChangeSupportEmail = async (event) => {
     event.preventDefault();
@@ -383,6 +446,11 @@ const HomePage = () => {
           <button className="edit-btn" onClick={openChangeDataModal}>
             Change Username/Email
           </button>
+          <div className="admin-btn-wrapper">
+            <button className="del-acc-btn" onClick={() => setShowDeleteAccountModal(true)}>
+              Delete Account
+            </button>
+          </div>
         </div>
         <button className="logout-btn" onClick={handleLogout}>
           Logout &#8625;
@@ -496,6 +564,31 @@ const HomePage = () => {
               <br />
               <button type="button" className="send-btn" onClick={() => setShowChangeDataModal(false)}>
                 Close
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteAccountModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <form onSubmit={handleDeleteAccount}>
+            <h3 className="h3-modal-del-acc">Are you sure you want to delete your account? This action cannot be undone.</h3>
+              <p className="label-form" htmlFor="password">Enter your password to confirm</p>
+              <input
+                className="reglog-input edit-input"
+                type="password"
+                id="password"
+                value={deleteAccountPassword}
+                onChange={(e) => setDeleteAccountPassword(e.target.value)}
+              />
+              <button type="submit" className="del-send-btn" disabled={loading}>
+                {loading ? "Deleting..." : "Confirm"}
+              </button>
+              <br />
+              <button type="button" className="send-btn" onClick={() => setShowDeleteAccountModal(false)}>
+                Cancel
               </button>
             </form>
           </div>

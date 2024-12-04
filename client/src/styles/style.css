@@ -736,6 +736,61 @@ td {
 	background: #3f1483;
 }
 
+.h3-modal-del-acc {
+	font-size: 28px;
+	color: #eee;
+	margin-bottom: 15px;
+}
+
+.del-send-btn {
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	border: none;
+	cursor: pointer;
+	background: #c60707;
+	margin-bottom: 10px;
+	margin-top: 0;
+	transition: 0.4s;
+	color: #eee;
+	border-radius: 5px;
+	width: 60%;
+}
+
+.del-send-btn:hover {
+	background: #890e0e;
+}
+
+.del-acc-btn {
+	padding: 5px;
+	margin-left: 5px;
+	background: #c60707;
+	color: #eee;
+	border-radius: 10px;
+	cursor: pointer;
+	border: 0;
+	transition: 0.2s;
+}
+
+.del-acc-btn:hover {
+	background: #890e0e;
+}
+
+.remove-user-btn {
+	padding: 5px;
+	margin-left: 5px;
+	background: #c60707;
+	color: #eee;
+	cursor: pointer;
+	border: 0;
+	transition: 0.2s;
+}
+
+.remove-user-btn:hover {
+	background: #890e0e;
+}
+
 .back-btn {
 	position: relative;
 	padding-left: 50px;
