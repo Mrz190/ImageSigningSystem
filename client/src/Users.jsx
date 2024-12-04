@@ -12,6 +12,9 @@ const Users = () => {
 
     useEffect(() => {
         fetchUsers();
+        const intervalId = setInterval(fetchUsers, 20000); // 30 sec
+
+        return () => clearInterval(intervalId);
     }, []);
 
     const fetchUsers = async () => {

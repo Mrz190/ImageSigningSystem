@@ -187,47 +187,47 @@ const HomePage = () => {
 
   const handleChangeData = async (event) => {
     event.preventDefault();
-
+  
     const { username, email } = changeData;
-
+  
     if (!username || !email) {
       alert("Please fill in both username and email.");
       return;
     }
-
+  
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       alert("Please enter a valid email address.");
       return;
     }
-
+  
     setLoading(true);
-
+  
     try {
       const userPasswordHash = sessionStorage.getItem("userPasswordHash");
       const local_realm = sessionStorage.getItem("realm");
       const local_username = sessionStorage.getItem("username");
-
+  
       const local_HA1 = userPasswordHash;
       const uri = "/Account/change-data";
-
+  
       const nonceResponse = await fetch(`${config.apiBaseUrl}/Account/LoginNonce`, {
         method: "GET",
       });
-
+  
       if (!nonceResponse.ok) {
         throw new Error("Failed to fetch nonce");
       }
-
+  
       const nonceData = await nonceResponse.json();
       const nonce = nonceData.nonce;
-
+  
       const qop = "auth";
       const nc = "00000001";
       const cnonce = CryptoJS.lib.WordArray.random(4).toString(CryptoJS.enc.Hex);
-
+  
       const digest = calculateDigest(local_HA1, nonce, uri, "PUT", qop, nc, cnonce);
-
+  
       const response = await fetch(`${config.apiBaseUrl}${uri}`, {
         method: "PUT",
         headers: {
@@ -236,19 +236,21 @@ const HomePage = () => {
         },
         body: JSON.stringify({ username, email }),
       });
-
+  
       if (!response.ok) {
-        throw new Error("Failed to change data");
+        const serverMessage = await response.text();
+        throw new Error(serverMessage || "Failed to change data");
       }
-
+  
       alert("Data updated successfully!");
       setShowChangeDataModal(false);
     } catch (err) {
-      setError(err.message);
+      alert(err.message);
     } finally {
       setLoading(false);
     }
   };
+  
 
   const handleChangeSupportEmail = async (event) => {
     event.preventDefault();
@@ -381,11 +383,6 @@ const HomePage = () => {
           <button className="edit-btn" onClick={openChangeDataModal}>
             Change Username/Email
           </button>
-          {isAdminRole && (
-            <button className="edit-btn edit-support-btn" onClick={openChangeSupportEmailModal}>
-              Change Support Email
-            </button>
-          )}
         </div>
         <button className="logout-btn" onClick={handleLogout}>
           Logout &#8625;

@@ -88,7 +88,7 @@ textarea {
 .global-container {
 	min-width: 95vw;
 	max-width: fit-content;
-	height: 95vh;
+	height: 90vh;
 	overflow: hidden;
     text-align: center;
 	background: linear-gradient(to bottom, #141131, #2f2a62, #211c51);

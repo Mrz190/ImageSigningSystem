@@ -10,7 +10,20 @@ const Images = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
   const [rejectImageId, setRejectImageId] = useState(null);
+  const [firstLoad, setFirstLoad] = useState(true);
+  const [signingInProgress, setSigningInProgress] = useState(false);
   const role = sessionStorage.getItem('role');
+
+  useEffect(() => {
+    fetchImages();
+
+    const interval = setInterval(() => {
+      fetchImages();
+    }, 3100);
+
+    return () => clearInterval(interval);
+  }, []);
+
 
   const handleRejectImage = (id) => {
     setRejectImageId(id);
@@ -59,7 +72,7 @@ const Images = () => {
   };
 
   const fetchImages = async () => {
-    if (loading) return;
+    if (loading && !firstLoad) return;
     setLoading(true);
 
     try {
@@ -77,48 +90,13 @@ const Images = () => {
         if (response.status === 404) {
           setImages([]);
         }
-        return (
-          <div>
-            <button className="reload-btn" onClick={() => fetchImages()}></button>
-            <div className="no-images">No images found</div>
-          </div>
-        );
+        return;
       }
 
       const data = await response.json();
       setImages(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+      setFirstLoad(false);
 
-  const handleAcceptImage = async (id) => {
-    try {
-      setLoading(true);
-      
-      const uri = `/Support/request-signature/${id}`;
-      const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
-  
-      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': authorizationHeader,
-          'Content-Type': 'application/json',
-        },
-      });
-  
-      if (!response.ok) {
-        throw new Error('Failed to accept image');
-      }
-  
-      setImages(images.filter((image) => image.id !== id));
-  
-
-
-      fetchImages(); 
-      alert("Request success.")
     } catch (err) {
       setError(err.message);
     } finally {
@@ -131,27 +109,25 @@ const Images = () => {
     setRejectComment('');
   };
   const handleRejectSubmit = async () => {
-    debugger
     try {
       setLoading(true);
-      
+
       if (!rejectComment.trim()) {
         alert('Please enter a comment');
         return;
       }
-  
+
       let uri = `/Support/reject-signing/${rejectImageId}`;
       const role = sessionStorage.getItem("role");
-      console.log(typeof(role));
-      if(role == "Support") {
+      if (role == "Support") {
         uri = `/Support/reject-signing/${rejectImageId}`;
       }
-      else if(role == "Admin") {
+      else if (role == "Admin") {
         uri = `/Admin/reject-signing/${rejectImageId}`;
       }
 
       const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
-  
+
       const response = await fetch(`${config.apiBaseUrl}${uri}`, {
         method: 'POST',
         headers: {
@@ -162,14 +138,14 @@ const Images = () => {
           Comment: rejectComment,
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error('Failed to reject image');
       }
       alert("Signing rejected.")
-  
+
       setImages(images.filter((image) => image.id !== rejectImageId));
-      setShowRejectModal(false); 
+      setShowRejectModal(false);
       setRejectComment('');
       fetchImages();
     } catch (err) {
@@ -272,6 +248,38 @@ const Images = () => {
     }
   };
 
+  const handleAcceptImage = async (id) => {
+    try {
+      setLoading(true);
+
+      const uri = `/Support/request-signature/${id}`;
+      const authorizationHeader = await getDigestAuthorizationHeader('POST', uri);
+
+      const response = await fetch(`${config.apiBaseUrl}${uri}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authorizationHeader,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to accept image');
+      }
+
+      setImages(images.filter((image) => image.id !== id));
+
+
+
+      fetchImages();
+      alert("Request success.")
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const closeModal = () => {
     setModalImage(null);
   };
@@ -296,18 +304,16 @@ const Images = () => {
       }
   
       setImages(images.filter((image) => image.id !== id));
-  
-      fetchImages();
       alert("Image signed.");
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+      fetchImages();
     }
   };
-  
 
-  if (loading) {
+  if (loading && firstLoad) {
     return (
       <div className="loading-container">
         <div className="spinner-container">
@@ -351,6 +357,11 @@ const Images = () => {
   if (role === "Admin") {
     return (
       <div className="images-container">
+        {firstLoad || loading ? (
+          <div className="spinner-container">
+            <div className="auto-reload-spinner"></div>
+          </div>
+        ) : null}
         <button className="reload-btn" onClick={() => fetchImages()}></button>
         <table className="images-table">
           <thead>
@@ -408,6 +419,11 @@ const Images = () => {
   } else if (role === "Support") {
     return (
       <div className="images-container">
+        {firstLoad || loading ? (
+          <div className="spinner-container">
+            <div className="auto-reload-spinner"></div>
+          </div>
+        ) : null}
         <button className="reload-btn" onClick={() => fetchImages()}></button>
         <table className="images-table">
           <thead>
@@ -466,6 +482,11 @@ const Images = () => {
 
   return (
     <div className="images-container">
+      {firstLoad || loading ? (
+        <div className="spinner-container">
+          <div className="auto-reload-spinner"></div>
+        </div>
+      ) : null}
       <button className="reload-btn" onClick={() => fetchImages()}></button>
       <table className="images-table">
         <thead>

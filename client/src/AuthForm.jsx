@@ -14,6 +14,8 @@ const AuthForm = () => {
     const [loginData, setLoginData] = useState({ userName: "", password: "" });
     const [registrationData, setRegistrationData] = useState({ username: "", password: "", email: "" });
     const [registrationSuccess, setRegistrationSuccess] = useState(false);
+    const [passwordFieldType, setPasswordFieldType] = useState("password");
+    const [registrationPasswordFieldType, setRegistrationPasswordFieldType] = useState("password");
     const navigate = useNavigate();
 
     const handleLoginChange = (e) => {
@@ -61,16 +63,16 @@ const AuthForm = () => {
                 const data = await response.json();
 
                 const userPasswordHash = CryptoJS.MD5(`${loginData.userName}:${nonceData.realm}:${loginData.password}`).toString(CryptoJS.enc.Hex);
-                sessionStorage.setItem('userPasswordHash', userPasswordHash); // Используем sessionStorage
+                sessionStorage.setItem('userPasswordHash', userPasswordHash);
 
                 if (data.token) {
-                    sessionStorage.setItem('token', data.token); // Используем sessionStorage
+                    sessionStorage.setItem('token', data.token);
                 }
                 if (data.role) {
-                    sessionStorage.setItem('role', data.role); // Используем sessionStorage
+                    sessionStorage.setItem('role', data.role);
                 }
-                sessionStorage.setItem('realm', realm); // Используем sessionStorage
-                sessionStorage.setItem('username', username); // Используем sessionStorage
+                sessionStorage.setItem('realm', realm);
+                sessionStorage.setItem('username', username);
                 location.reload();
                 navigate("/home");
             } else {
@@ -79,6 +81,22 @@ const AuthForm = () => {
         } catch (error) {
             console.error("Error during login:", error);
         }
+    };
+
+    const handlePasswordFocus = () => {
+        setPasswordFieldType("text");
+    };
+
+    const handlePasswordBlur = () => {
+        setPasswordFieldType("password");
+    };
+
+    const handleRegistrationPasswordFocus = () => {
+        setRegistrationPasswordFieldType("text");
+    };
+
+    const handleRegistrationPasswordBlur = () => {
+        setRegistrationPasswordFieldType("password");
     };
 
     const handleRegistrationSubmit = async (e) => {
@@ -136,13 +154,15 @@ const AuthForm = () => {
                     />
                     <input
                         className="reglog-input reg-input"
-                        type="password"
+                        type={registrationPasswordFieldType}
                         name="password"
                         placeholder="Password"
                         required
                         autoComplete="off"
                         value={registrationData.password}
                         onChange={handleRegistrationChange}
+                        onFocus={handleRegistrationPasswordFocus}
+                        onBlur={handleRegistrationPasswordBlur}
                     />
                     <button className="send-btn" type="submit">Sign up</button>
                 </form>
@@ -169,13 +189,15 @@ const AuthForm = () => {
                     />
                     <input
                         className="reglog-input log-input"
-                        type="password"
+                        type={passwordFieldType}
                         name="password"
                         placeholder="Password"
                         required
                         autoComplete="off"
                         value={loginData.password}
                         onChange={handleLoginChange}
+                        onFocus={handlePasswordFocus}
+                        onBlur={handlePasswordBlur}
                     />
                     <button className="send-btn" type="submit">Login</button>
                 </form>

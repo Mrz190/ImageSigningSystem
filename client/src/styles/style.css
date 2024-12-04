@@ -259,6 +259,16 @@
 	margin-top: 140px;
 }
 
+.auto-reload-spinner {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 30px;
+	height: 30px;
+	background: url("../img/auto-reload.gif") center no-repeat;
+	background-size: cover;
+}
+
 .spinner-container {
 	position: relative;
 	display: flex;
