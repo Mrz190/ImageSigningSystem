@@ -55,6 +55,7 @@
       <li>GET /Admin/view-image/{imageId}</li>
       <li>POST /Admin/change-role/{userId}</li>
       <li>POST /Admin/send-email</li>
+      <li>DELETE /Admin/remove-user/{userId}</li>
     </ul>
   </li>
   
