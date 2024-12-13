@@ -140,20 +140,26 @@
 
 <h2>Установка и запуск</h2>
 <h3>Database:</h3>
-<p>примечание: у вас уже должен быть установлен sql server</p> 
+<p>примечание: у вас уже должен быть установлен <b>sql server</b></p> 
 
 <h3>API: (папка API)</h3>
 
 ```bash
 git clone https://github.com/Mrz190/ImageSigningSystem
+```
+```bash
 cd ImageSigningSystem/API
 ```
 
-<p>Изменить в папке API строку подключения DbConnection в файле appsettings.json</p> 
+<p>Изменить в папке <b>API</b> строку подключения <b>DbConnection</b> в файле <b>appsettings.json</b></p> 
 
 ```bash
 dotnet ef migrations add InitialCreateMigration
+```
+```bash
 dotnet ef database update
+```
+```bash
 dotnet run
 ```
 
@@ -161,7 +167,11 @@ dotnet run
 
 ```bash
 cd client
+```
+```bash
 npm install react-scripts --save
+```
+```bash
 npm start
 ```
 
