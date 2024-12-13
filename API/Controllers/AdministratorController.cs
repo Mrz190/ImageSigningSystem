@@ -1,6 +1,7 @@
 ﻿using API.Data;
 using API.Dto;
 using API.Entity;
+using API.ImageProcessing;
 using API.Interfaces;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;

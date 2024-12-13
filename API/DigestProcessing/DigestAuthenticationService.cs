@@ -2,7 +2,7 @@
 using API.Interfaces;
 using System.Text;
 
-namespace API.Services
+namespace API.DigestProcessing
 {
     public class DigestAuthenticationService : IDigestAuthenticationService
     {

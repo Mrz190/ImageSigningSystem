@@ -2,8 +2,8 @@
 using API.Dto;
 using API.Entity;
 using API.Helpers;
+using API.ImageProcessing;
 using API.Interfaces;
-using API.Services;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;

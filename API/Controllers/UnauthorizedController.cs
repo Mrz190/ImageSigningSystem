@@ -1,4 +1,4 @@
-﻿using API.Services;
+﻿using API.ImageProcessing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;

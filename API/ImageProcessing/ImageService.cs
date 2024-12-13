@@ -8,7 +8,7 @@ using AutoMapper;
 using API.Interfaces;
 using SixLabors.ImageSharp.Formats.Png;
 
-namespace API.Services
+namespace API.ImageProcessing
 {
     public class ImageService : IDisposable
     {
@@ -22,10 +22,10 @@ namespace API.Services
         public ImageService(DataContext context, IUnitOfWork unitOfWork, IMapper mapper)
         {
             string privateKeyPath = Path.Combine(Directory.GetCurrentDirectory(), "Keys", "private.key");
-            _privateKey = System.IO.File.ReadAllText(privateKeyPath);
+            _privateKey = File.ReadAllText(privateKeyPath);
 
             string publicKeyPath = Path.Combine(Directory.GetCurrentDirectory(), "Keys", "public.key");
-            _publicKey = System.IO.File.ReadAllText(publicKeyPath);
+            _publicKey = File.ReadAllText(publicKeyPath);
 
             _context = context;
             _unitOfWork = unitOfWork;
@@ -362,8 +362,8 @@ namespace API.Services
             var image = await _context.SignedImages.Select(img => new { img.Id, img.ImageName, img.Status, img.UploadedBy }).FirstOrDefaultAsync();
 
             return image;
-        }      
-        
+        }
+
         public async Task<bool> DeleteImage(SignedImage image)
         {
             _context.SignedImages.Remove(image);

@@ -2,7 +2,7 @@
 using API.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace API.Helpers
+namespace API.UnitOfWork
 {
     public class UnitOfWork : IUnitOfWork
     {

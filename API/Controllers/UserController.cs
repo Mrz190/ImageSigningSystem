@@ -1,5 +1,5 @@
 ﻿using API.Entity;
-using API.Services;
+using API.ImageProcessing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

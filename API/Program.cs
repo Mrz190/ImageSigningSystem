@@ -1,11 +1,14 @@
 using API.Data;
+using API.DigestProcessing;
 using API.Entity;
 using API.Extensions;
 using API.Helpers;
+using API.ImageProcessing;
 using API.Interfaces;
 using API.Middleware;
 using API.Repositories;
 using API.Services;
+using API.UnitOfWork;
 using IdentityServer4.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -185,4 +188,4 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.Run();
+app.Run("https://localhost:7223");

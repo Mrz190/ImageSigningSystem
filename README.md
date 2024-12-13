@@ -40,6 +40,35 @@
   </li>
 </ol>
 
+<h2>Технологии</h2>
+
+<b>Backend:</b> ASP.NET 8 Web API
+<ul>
+  <li>User Manager для работы с пользователями в БД</li>
+  <li>Общение с клиентом посредством JSON объектов</li>
+  <li>Entity Framework для общения с БД</li>
+  <li>MailKit для работы сервиса нотификации</li>
+  <li>ImageSharp для работы с изображениями</li>
+  <li>AutoMapper для маппинга данных между DTO и Entity</li>
+</ul>
+
+<b>Authentication:</b> Digest для аутентификации и авторизации ролей
+
+<b>Подпись изображений:</b> RSA с использованием private и public keys
+
+<b>Хранение данных:</b> SQL Server: Информация о заявках, которые ещё не обработаны; подписанные изображения и метаинформация хранятся только до момента их скачивания или удаления пользователем. Подпись и метаданные сохраняются в самом изображении.
+
+<b>Frontend:</b> JS React
+
+<b>Также использованы:</b>
+<ul>
+  <li>UnitOfWork pattern</li>
+  <li>Dependecy Injection</li>
+  <li>Repository Pattern</li>
+  <li>Service Pattern</li>
+  <li>Middleware</li>
+</ul>
+
 <h2>Структура API</h2>
 
 <ul>
@@ -55,6 +84,7 @@
       <li>GET /Admin/view-image/{imageId}</li>
       <li>POST /Admin/change-role/{userId}</li>
       <li>POST /Admin/send-email</li>
+      <li>DELETE /Admin/remove-user/{userId}</li>
     </ul>
   </li>
   
@@ -108,27 +138,38 @@
 </ul>
 
 
-
-<h2>Технологии</h2>
-
-<b>Backend:</b> ASP.NET Web API
-
-<b>Authentication:</b> Digest для аутентификации и авторизации ролей
-
-<b>Хранение данных:</b> SQL Server: Информация о заявках, которые ещё не обработаны; подписанные изображения и метаинформация хранятся только до момента их скаивания или удаления пользователем. Подпись и метаданные сохраняются в самом изображении.
-
 <h2>Установка и запуск</h2>
-<h3>API:</h3>
+<h3>Database:</h3>
+<p>примечание: у вас уже должен быть установлен sql server</p> 
 
-        git clone <url репозитория>
-        cd <project_folder>
-        dotnet ef migrations add InitialCreateMigration
-        dotnet ef database update
-        dotnet run
-        
-<h3>Frontend:</h3>
+<h3>API: (папка API)</h3>
 
-        npm start
+```bash
+git clone https://github.com/Mrz190/ImageSigningSystem
+cd ImageSigningSystem/API
+```
+
+<p>Изменить в папке API строку подключения DbConnection в файле appsettings.json</p> 
+
+```bash
+dotnet ef migrations add InitialCreateMigration
+dotnet ef database update
+dotnet run
+```
+
+<h3>Frontend: (папка client)</h3>
+
+```bash
+cd client
+npm install react-scripts --save
+npm start
+```
+
+<h3>В дополнение:</h3>
+<p>После первого старта проекта создается учетная запись администратора со следующими данными:<br/></p>
+<p>Login: admin<br/></p> 
+<p>Password: Pass_123</p> 
+
 
 <h2>Структура проекта:</h2>
 
@@ -137,7 +178,10 @@
     <strong>/Controllers</strong> - контроллеры для API-эндпоинтов.
   </li>
   <li>
-    <strong>/Data</strong> - мост для сущностей в БД.
+    <strong>/DbData</strong> - мост для сущностей в БД.
+  </li>
+  <li>
+    <strong>/DigestProcessing</strong> - работа с Digest.
   </li>
   <li>
     <strong>/Dto</strong> - объекты Dto.
@@ -149,7 +193,10 @@
     <strong>/Extensions</strong> - доп расширения.
   </li>
   <li>
-    <strong>/Helpers</strong> - UnitOfWork и MD5Hash.
+    <strong>/Helpers</strong> - MD5Hash.
+  </li>
+  <li>
+    <strong>/ImageProcessing</strong> - алгоритмы работы с изображением.
   </li>
   <li>
     <strong>/Interfaces</strong> - интерфейсы.
@@ -168,6 +215,9 @@
   </li>
   <li>
     <strong>/Services</strong> - сервисы для работы с бизнес-логикой.
+  </li>
+  <li>
+    <strong>/UnitOfWork</strong> - паттерн UnitOfWork.
   </li>
 </ul>
 
